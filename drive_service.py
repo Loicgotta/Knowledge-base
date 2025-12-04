@@ -19,15 +19,49 @@ import openpyxl
 
 # Supported MIME types for processing
 SUPPORTED_MIME_TYPES = {
-    'application/pdf': 'pdf',
+    # Google Workspace
     'application/vnd.google-apps.document': 'gdoc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
     'application/vnd.google-apps.spreadsheet': 'gsheet',
+    'application/vnd.google-apps.presentation': 'gslides',
+
+    # Microsoft Office - Modern formats
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+
+    # Microsoft Office - Legacy formats
+    'application/msword': 'doc',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.ms-powerpoint': 'ppt',
+
+    # PDF
+    'application/pdf': 'pdf',
+
+    # Text formats
     'text/plain': 'txt',
     'text/html': 'html',
     'text/markdown': 'md',
-    'application/vnd.google-apps.presentation': 'gslides',
+    'text/csv': 'csv',
+    'text/xml': 'xml',
+    'text/rtf': 'rtf',
+    'application/rtf': 'rtf',
+
+    # Data formats
+    'application/json': 'json',
+    'application/xml': 'xml',
+    'text/x-python': 'py',
+    'text/x-java-source': 'java',
+    'text/javascript': 'js',
+    'application/javascript': 'js',
+    'text/css': 'css',
+    'text/x-c': 'c',
+    'text/x-c++src': 'cpp',
+
+    # Other common formats
+    'application/x-yaml': 'yaml',
+    'text/yaml': 'yaml',
+    'text/x-rst': 'rst',
+    'text/x-log': 'log',
 }
 
 # Export formats for Google Workspace documents
@@ -111,15 +145,16 @@ class DriveService:
                     is_folder = item['mimeType'] == 'application/vnd.google-apps.folder'
                     is_supported = item['mimeType'] in SUPPORTED_MIME_TYPES
 
-                    if is_folder or is_supported:
-                        all_items.append({
-                            'id': item['id'],
-                            'name': item['name'],
-                            'mimeType': item['mimeType'],
-                            'type': 'folder' if is_folder else 'file',
-                            'modifiedTime': item.get('modifiedTime', ''),
-                            'size': item.get('size', 0)
-                        })
+                    # Show all files (not just supported ones) - we'll try to index them anyway
+                    all_items.append({
+                        'id': item['id'],
+                        'name': item['name'],
+                        'mimeType': item['mimeType'],
+                        'type': 'folder' if is_folder else 'file',
+                        'modifiedTime': item.get('modifiedTime', ''),
+                        'size': item.get('size', 0),
+                        'supported': is_folder or is_supported  # Flag to show in UI
+                    })
 
                 page_token = results.get('nextPageToken')
                 if not page_token:
@@ -157,12 +192,9 @@ class DriveService:
                 if mime_type == 'application/vnd.google-apps.folder':
                     continue
 
-                # Skip unsupported types
-                if mime_type not in SUPPORTED_MIME_TYPES:
-                    continue
-
+                # Try to process any file type (no longer skip unsupported types)
                 file_name = file_meta['name']
-                print(f"Processing: {file_name}")
+                print(f"Processing: {file_name} ({mime_type})")
 
                 content = self.get_file_content(file_id, mime_type)
 
@@ -195,13 +227,11 @@ class DriveService:
         all_files = []
         page_token = None
 
-        # Build query for supported file types
-        mime_conditions = " or ".join([f"mimeType='{mime}'" for mime in SUPPORTED_MIME_TYPES.keys()])
-
+        # List all files (not filtered by MIME type) to support any format
         if folder_id:
             query = f"'{folder_id}' in parents and trashed=false"
         else:
-            query = f"({mime_conditions}) and trashed=false"
+            query = "trashed=false"
 
         try:
             while True:
@@ -243,7 +273,8 @@ class DriveService:
                 if item['mimeType'] == 'application/vnd.google-apps.folder':
                     # Recursively process subfolder
                     process_folder(item['id'])
-                elif item['mimeType'] in SUPPORTED_MIME_TYPES:
+                else:
+                    # Include all files (not just supported types)
                     all_files.append(item)
 
         process_folder(folder_id)
@@ -311,14 +342,21 @@ class DriveService:
             return self._parse_pdf(file_content)
         elif mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
             return self._parse_docx(file_content)
-        elif mime_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        elif mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
             return self._parse_xlsx(file_content)
+        elif mime_type == 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+            return self._parse_pptx(file_content)
         elif mime_type == 'text/html':
             return self._parse_html(file_content)
-        elif mime_type in ['text/plain', 'text/markdown']:
-            return file_content.read().decode('utf-8', errors='ignore')
+        elif mime_type == 'text/csv':
+            return self._parse_csv(file_content)
+        elif mime_type in ['application/json']:
+            return self._parse_json(file_content)
+        elif mime_type in ['application/xml', 'text/xml']:
+            return self._parse_xml(file_content)
         else:
-            return file_content.read().decode('utf-8', errors='ignore')
+            # Fallback: try to read as text
+            return self._parse_as_text(file_content)
 
     def _parse_pdf(self, file_content: io.BytesIO) -> str:
         """Extract text from PDF file"""
@@ -382,6 +420,91 @@ class DriveService:
             return text
         except Exception as e:
             print(f"Error parsing HTML: {e}")
+            return ""
+
+    def _parse_pptx(self, file_content: io.BytesIO) -> str:
+        """Extract text from PPTX file"""
+        try:
+            from pptx import Presentation
+            prs = Presentation(file_content)
+            text_parts = []
+
+            for slide_num, slide in enumerate(prs.slides, 1):
+                text_parts.append(f"=== Slide {slide_num} ===")
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        text_parts.append(shape.text)
+
+            return "\n\n".join(text_parts)
+        except ImportError:
+            print("python-pptx not installed, trying fallback")
+            return self._parse_as_text(file_content)
+        except Exception as e:
+            print(f"Error parsing PPTX: {e}")
+            return ""
+
+    def _parse_csv(self, file_content: io.BytesIO) -> str:
+        """Extract text from CSV file"""
+        try:
+            import csv
+            content = file_content.read().decode('utf-8', errors='ignore')
+            file_content.seek(0)
+
+            text_parts = []
+            reader = csv.reader(content.splitlines())
+            for row in reader:
+                row_text = " | ".join(row)
+                if row_text.strip():
+                    text_parts.append(row_text)
+
+            return "\n".join(text_parts)
+        except Exception as e:
+            print(f"Error parsing CSV: {e}")
+            return file_content.read().decode('utf-8', errors='ignore')
+
+    def _parse_json(self, file_content: io.BytesIO) -> str:
+        """Extract text from JSON file"""
+        try:
+            import json
+            content = file_content.read().decode('utf-8', errors='ignore')
+            data = json.loads(content)
+            # Pretty print JSON for better readability
+            return json.dumps(data, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
+            file_content.seek(0)
+            return file_content.read().decode('utf-8', errors='ignore')
+
+    def _parse_xml(self, file_content: io.BytesIO) -> str:
+        """Extract text from XML file"""
+        try:
+            soup = BeautifulSoup(file_content.read(), 'xml')
+            text = soup.get_text(separator='\n')
+            lines = (line.strip() for line in text.splitlines())
+            return '\n'.join(line for line in lines if line)
+        except Exception as e:
+            print(f"Error parsing XML: {e}")
+            file_content.seek(0)
+            return file_content.read().decode('utf-8', errors='ignore')
+
+    def _parse_as_text(self, file_content: io.BytesIO) -> str:
+        """Fallback: try to read any file as text"""
+        try:
+            content = file_content.read()
+            # Try UTF-8 first
+            try:
+                return content.decode('utf-8')
+            except UnicodeDecodeError:
+                pass
+            # Try Latin-1 (covers all byte values)
+            try:
+                return content.decode('latin-1')
+            except UnicodeDecodeError:
+                pass
+            # Last resort: ignore errors
+            return content.decode('utf-8', errors='ignore')
+        except Exception as e:
+            print(f"Error reading file as text: {e}")
             return ""
 
     def get_all_documents(self, folder_id: Optional[str] = None) -> List[Dict]:
