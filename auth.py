@@ -10,10 +10,18 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 
-# OAuth 2.0 scopes - using drive.file for user-selected files only
+# OAuth 2.0 scopes - all scopes configured in Google Cloud Console
 SCOPES = [
-    'https://www.googleapis.com/auth/drive.file',  # Access to files opened/created by the app
-    'https://www.googleapis.com/auth/drive.readonly',  # Read-only access to all files
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events',
 ]
 
 
@@ -55,7 +63,6 @@ def get_authorization_url():
 
     authorization_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true',
         prompt='consent'
     )
 
