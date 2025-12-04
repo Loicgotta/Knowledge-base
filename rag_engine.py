@@ -118,12 +118,13 @@ class RAGEngine:
 
         return all_embeddings
 
-    def index_documents(self, documents: List[Dict]) -> Dict:
+    def index_documents(self, documents: List[Dict], clear_existing: bool = True) -> Dict:
         """
         Index documents into the vector store
 
         Args:
             documents: List of documents with 'name' and 'content' keys
+            clear_existing: If True, clear existing index before adding
 
         Returns:
             Indexing statistics
@@ -153,23 +154,24 @@ class RAGEngine:
         if not all_chunks:
             return {'status': 'empty', 'chunks_indexed': 0}
 
-        # Clear existing collection for fresh index
-        try:
-            self.chroma_client.delete_collection(self.collection_name)
-        except:
-            pass
+        if clear_existing:
+            # Clear existing collection for fresh index
+            try:
+                self.chroma_client.delete_collection(self.collection_name)
+            except:
+                pass
 
-        self.collection = self.chroma_client.create_collection(
-            name=self.collection_name,
-            metadata={"hnsw:space": "cosine"}
-        )
+            self.collection = self.chroma_client.create_collection(
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"}
+            )
 
         # Get embeddings for all chunks
         print(f"Generating embeddings for {len(all_chunks)} chunks...")
         embeddings = self._get_embeddings(all_chunks)
 
-        # Add to collection
-        self.collection.add(
+        # Add to collection (upsert to handle duplicates)
+        self.collection.upsert(
             ids=all_ids,
             embeddings=embeddings,
             documents=all_chunks,
@@ -181,6 +183,33 @@ class RAGEngine:
             'documents_processed': len(documents),
             'chunks_indexed': len(all_chunks)
         }
+
+    def add_documents(self, documents: List[Dict]) -> Dict:
+        """
+        Add documents to existing index without clearing
+
+        Args:
+            documents: List of documents with 'name' and 'content' keys
+
+        Returns:
+            Indexing statistics
+        """
+        return self.index_documents(documents, clear_existing=False)
+
+    def get_indexed_documents(self) -> List[str]:
+        """Get list of indexed document names"""
+        try:
+            # Get all metadatas from collection
+            results = self.collection.get(include=['metadatas'])
+            doc_names = set()
+            if results['metadatas']:
+                for meta in results['metadatas']:
+                    if meta.get('doc_name'):
+                        doc_names.add(meta['doc_name'])
+            return list(doc_names)
+        except Exception as e:
+            print(f"Error getting indexed documents: {e}")
+            return []
 
     def search(self, query: str, n_results: int = 5) -> List[Dict]:
         """

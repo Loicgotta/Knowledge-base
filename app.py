@@ -177,6 +177,114 @@ def select_folder():
     })
 
 
+@app.route('/browse')
+def browse_folder():
+    """Browse folder contents (files and subfolders)"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        folder_id = request.args.get('folder_id')  # None means root
+
+        drive_service = DriveService(credentials)
+        items = drive_service.list_folder_contents(folder_id)
+
+        return jsonify({
+            'status': 'success',
+            'items': items,
+            'folder_id': folder_id or 'root'
+        })
+
+    except Exception as e:
+        print(f"Error browsing folder: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/add-documents', methods=['POST'])
+def add_documents():
+    """Add documents to existing index without clearing"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        data = request.json or {}
+        items = data.get('items', [])  # List of {id, type, name}
+
+        if not items:
+            return jsonify({'error': 'No items selected'}), 400
+
+        drive_service = DriveService(credentials)
+        all_documents = []
+
+        # Process each selected item
+        file_ids = []
+        folder_ids = []
+
+        for item in items:
+            if item.get('type') == 'folder':
+                folder_ids.append(item['id'])
+            else:
+                file_ids.append(item['id'])
+
+        # Get documents from individual files
+        if file_ids:
+            docs = drive_service.get_documents_by_ids(file_ids)
+            all_documents.extend(docs)
+
+        # Get documents from folders (recursive)
+        for folder_id in folder_ids:
+            docs = drive_service.get_all_documents(folder_id=folder_id)
+            all_documents.extend(docs)
+
+        if not all_documents:
+            return jsonify({
+                'status': 'warning',
+                'message': 'No documents found in selected items',
+                'documents_found': 0
+            })
+
+        # Add to existing index (don't clear)
+        rag = get_rag_engine()
+        result = rag.add_documents(all_documents)
+
+        return jsonify({
+            'status': 'success',
+            'message': f"Added {result['chunks_indexed']} chunks from {result['documents_processed']} documents",
+            'documents_processed': result['documents_processed'],
+            'chunks_indexed': result['chunks_indexed']
+        })
+
+    except Exception as e:
+        print(f"Add documents error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/indexed-documents')
+def get_indexed_documents():
+    """Get list of indexed document names"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        rag = get_rag_engine()
+        documents = rag.get_indexed_documents()
+        return jsonify({
+            'status': 'success',
+            'documents': documents,
+            'count': len(documents)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/sync', methods=['POST'])
 def sync_drive():
     """Sync documents from Google Drive"""

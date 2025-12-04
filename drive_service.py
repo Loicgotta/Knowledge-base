@@ -78,6 +78,109 @@ class DriveService:
             print(f"Error listing folders: {error}")
             return []
 
+    def list_folder_contents(self, folder_id: Optional[str] = None) -> List[Dict]:
+        """
+        List contents of a folder (files and subfolders)
+
+        Args:
+            folder_id: Folder ID to list contents from. If None, lists root.
+
+        Returns:
+            List of file/folder metadata with type indicator
+        """
+        all_items = []
+        page_token = None
+
+        if folder_id:
+            query = f"'{folder_id}' in parents and trashed=false"
+        else:
+            query = "'root' in parents and trashed=false"
+
+        try:
+            while True:
+                results = self.service.files().list(
+                    pageSize=100,
+                    fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
+                    q=query,
+                    orderBy="folder,name",
+                    pageToken=page_token
+                ).execute()
+
+                items = results.get('files', [])
+                for item in items:
+                    is_folder = item['mimeType'] == 'application/vnd.google-apps.folder'
+                    is_supported = item['mimeType'] in SUPPORTED_MIME_TYPES
+
+                    if is_folder or is_supported:
+                        all_items.append({
+                            'id': item['id'],
+                            'name': item['name'],
+                            'mimeType': item['mimeType'],
+                            'type': 'folder' if is_folder else 'file',
+                            'modifiedTime': item.get('modifiedTime', ''),
+                            'size': item.get('size', 0)
+                        })
+
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+
+            return all_items
+
+        except HttpError as error:
+            print(f"Error listing folder contents: {error}")
+            return []
+
+    def get_documents_by_ids(self, file_ids: List[str]) -> List[Dict]:
+        """
+        Fetch specific documents by their IDs
+
+        Args:
+            file_ids: List of file IDs to fetch
+
+        Returns:
+            List of documents with metadata and content
+        """
+        documents = []
+
+        for file_id in file_ids:
+            try:
+                # Get file metadata
+                file_meta = self.service.files().get(
+                    fileId=file_id,
+                    fields="id, name, mimeType, modifiedTime"
+                ).execute()
+
+                mime_type = file_meta['mimeType']
+
+                # Skip folders
+                if mime_type == 'application/vnd.google-apps.folder':
+                    continue
+
+                # Skip unsupported types
+                if mime_type not in SUPPORTED_MIME_TYPES:
+                    continue
+
+                file_name = file_meta['name']
+                print(f"Processing: {file_name}")
+
+                content = self.get_file_content(file_id, mime_type)
+
+                if content and content.strip():
+                    documents.append({
+                        'id': file_id,
+                        'name': file_name,
+                        'mime_type': mime_type,
+                        'content': content,
+                        'modified_time': file_meta.get('modifiedTime', '')
+                    })
+
+            except HttpError as error:
+                print(f"Error fetching file {file_id}: {error}")
+                continue
+
+        return documents
+
     def list_files(self, page_size: int = 100, folder_id: Optional[str] = None) -> List[Dict]:
         """
         List files from Google Drive

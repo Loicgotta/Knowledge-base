@@ -13,27 +13,18 @@
             --danger: #ea4335;
             --warning: #fbbc05;
             --bg-light: #f8f9fa;
-            --bg-dark: #1a1a2e;
             --text-primary: #202124;
             --text-secondary: #5f6368;
             --border: #dadce0;
             --shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-light);
             color: var(--text-primary);
             min-height: 100vh;
         }
-
-        /* Header */
         .header {
             background: white;
             border-bottom: 1px solid var(--border);
@@ -42,33 +33,18 @@
             justify-content: space-between;
             align-items: center;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             z-index: 100;
         }
-
         .logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
             font-weight: 600;
             font-size: 1.25rem;
-            color: var(--text-primary);
         }
-
-        .logo svg {
-            width: 32px;
-            height: 32px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-        }
-
-        /* Buttons */
+        .logo svg { width: 32px; height: 32px; }
+        .header-actions { display: flex; gap: 0.75rem; align-items: center; }
         .btn {
             padding: 0.625rem 1.25rem;
             border-radius: 8px;
@@ -82,49 +58,13 @@
             gap: 0.5rem;
             text-decoration: none;
         }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-light);
-        }
-
-        .btn-success {
-            background: var(--secondary);
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Main Container */
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 6rem 1.5rem 2rem;
-        }
-
-        /* Login Section */
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: white; color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-light); }
+        .btn-success { background: var(--secondary); color: white; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .container { max-width: 900px; margin: 0 auto; padding: 6rem 1.5rem 2rem; }
         .login-section {
             text-align: center;
             padding: 4rem 2rem;
@@ -133,49 +73,12 @@
             box-shadow: var(--shadow);
             margin-top: 2rem;
         }
-
-        .login-section h1 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: var(--text-primary);
-        }
-
-        .login-section p {
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
-            text-align: left;
-        }
-
-        .feature {
-            padding: 1.5rem;
-            background: var(--bg-light);
-            border-radius: 12px;
-        }
-
-        .feature h3 {
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .feature p {
-            font-size: 0.875rem;
-            margin: 0;
-        }
-
-        /* Chat Section */
+        .login-section h1 { font-size: 2rem; margin-bottom: 1rem; }
+        .login-section p { color: var(--text-secondary); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; text-align: left; }
+        .feature { padding: 1.5rem; background: var(--bg-light); border-radius: 12px; }
+        .feature h3 { font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .feature p { font-size: 0.875rem; margin: 0; }
         .chat-section {
             display: flex;
             flex-direction: column;
@@ -185,7 +88,6 @@
             box-shadow: var(--shadow);
             overflow: hidden;
         }
-
         .chat-header {
             padding: 1rem 1.5rem;
             border-bottom: 1px solid var(--border);
@@ -195,31 +97,7 @@
             flex-wrap: wrap;
             gap: 0.5rem;
         }
-
-        .chat-header-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .folder-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.375rem;
-            padding: 0.375rem 0.75rem;
-            background: #e3f2fd;
-            color: #1976d2;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .folder-badge svg {
-            width: 14px;
-            height: 14px;
-        }
-
+        .chat-header-left { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -229,301 +107,113 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
-
-        .status-badge.ready {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .status-badge.empty {
-            background: #fff3e0;
-            color: #f57c00;
-        }
-
-        .status-badge.syncing {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-
-        /* Messages */
-        .messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .message {
-            max-width: 85%;
-            padding: 1rem 1.25rem;
-            border-radius: 16px;
-            line-height: 1.5;
-        }
-
-        .message.user {
-            background: var(--primary);
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.assistant {
-            background: var(--bg-light);
-            color: var(--text-primary);
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
-        }
-
-        .message.assistant .sources {
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid var(--border);
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .message.assistant .sources strong {
-            color: var(--text-primary);
-        }
-
-        .message.system {
-            background: #fff3cd;
-            color: #856404;
-            align-self: center;
-            text-align: center;
-            font-size: 0.875rem;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            align-self: center;
-            text-align: center;
-        }
-
-        .typing-indicator {
-            display: flex;
-            gap: 4px;
-            padding: 1rem;
-            background: var(--bg-light);
-            border-radius: 16px;
-            align-self: flex-start;
-            width: fit-content;
-        }
-
-        .typing-indicator span {
-            width: 8px;
-            height: 8px;
-            background: var(--text-secondary);
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out;
-        }
-
+        .status-badge.ready { background: #e8f5e9; color: #2e7d32; }
+        .status-badge.empty { background: #fff3e0; color: #f57c00; }
+        .messages { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .message { max-width: 85%; padding: 1rem 1.25rem; border-radius: 16px; line-height: 1.5; }
+        .message.user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .message.assistant { background: var(--bg-light); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .message.assistant .sources { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-secondary); }
+        .message.system { background: #fff3cd; color: #856404; align-self: center; text-align: center; font-size: 0.875rem; }
+        .message.error { background: #f8d7da; color: #721c24; align-self: center; text-align: center; }
+        .typing-indicator { display: flex; gap: 4px; padding: 1rem; background: var(--bg-light); border-radius: 16px; align-self: flex-start; }
+        .typing-indicator span { width: 8px; height: 8px; background: var(--text-secondary); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
         .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
         .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .input-area { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; }
+        .input-area input { flex: 1; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 1rem; font-family: inherit; }
+        .input-area input:focus { outline: none; border-color: var(--primary); }
+        .welcome { text-align: center; padding: 3rem; color: var(--text-secondary); }
+        .welcome h2 { font-size: 1.5rem; color: var(--text-primary); margin-bottom: 0.5rem; }
+        .welcome p { margin-bottom: 1.5rem; }
+        .suggestions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+        .suggestion { padding: 0.625rem 1rem; background: var(--bg-light); border: 1px solid var(--border); border-radius: 20px; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
+        .suggestion:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
-
-        /* Input Area */
-        .input-area {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 0.75rem;
-        }
-
-        .input-area input {
-            flex: 1;
-            padding: 0.875rem 1rem;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            font-size: 1rem;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-
-        .input-area input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .input-area button {
-            padding: 0.875rem 1.5rem;
-        }
-
-        /* Welcome Message */
-        .welcome {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-        }
-
-        .welcome h2 {
-            font-size: 1.5rem;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .welcome p {
-            margin-bottom: 1.5rem;
-        }
-
-        .suggestions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            justify-content: center;
-        }
-
-        .suggestion {
-            padding: 0.625rem 1rem;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .suggestion:hover {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        /* Modal */
+        /* Modal styles */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5);
             z-index: 200;
             justify-content: center;
             align-items: center;
         }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
+        .modal-overlay.active { display: flex; }
         .modal {
             background: white;
             border-radius: 16px;
-            padding: 2rem;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
+            padding: 1.5rem;
+            max-width: 600px;
+            width: 95%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
         }
+        .modal h3 { margin-bottom: 1rem; text-align: center; }
+        .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .modal h3 {
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .modal p {
-            color: var(--text-secondary);
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Folder List */
-        .folder-list {
-            max-height: 300px;
-            overflow-y: auto;
+        /* File browser styles */
+        .browser-header { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
+        .search-box { position: relative; }
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
             border: 1px solid var(--border);
             border-radius: 8px;
-            margin-bottom: 1rem;
+            font-size: 0.875rem;
         }
+        .search-box input:focus { outline: none; border-color: var(--primary); }
+        .search-box svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        .breadcrumb { display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; flex-wrap: wrap; }
+        .breadcrumb-item { color: var(--primary); cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 4px; }
+        .breadcrumb-item:hover { background: var(--bg-light); }
+        .breadcrumb-item.current { color: var(--text-primary); cursor: default; }
+        .breadcrumb-item.current:hover { background: transparent; }
+        .breadcrumb-sep { color: var(--text-secondary); }
 
-        .folder-item {
+        .file-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; min-height: 300px; max-height: 400px; }
+        .file-item {
             padding: 0.75rem 1rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            cursor: pointer;
             border-bottom: 1px solid var(--border);
-            transition: background 0.2s;
+            cursor: pointer;
+            transition: background 0.15s;
         }
+        .file-item:last-child { border-bottom: none; }
+        .file-item:hover { background: var(--bg-light); }
+        .file-item.selected { background: #e3f2fd; }
+        .file-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .file-item .icon { width: 24px; height: 24px; flex-shrink: 0; }
+        .file-item .icon.folder { color: #fbbc05; }
+        .file-item .icon.file { color: var(--primary); }
+        .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .type { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
+        .file-item .enter-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; opacity: 0; transition: opacity 0.15s; }
+        .file-item:hover .enter-btn { opacity: 1; }
 
-        .folder-item:last-child {
-            border-bottom: none;
-        }
+        .selection-info { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+        .selection-count { font-size: 0.875rem; color: var(--text-secondary); }
+        .modal-actions { display: flex; gap: 0.75rem; }
 
-        .folder-item:hover {
-            background: var(--bg-light);
-        }
+        .indexed-docs { margin-top: 1rem; padding: 0.75rem; background: var(--bg-light); border-radius: 8px; font-size: 0.75rem; }
+        .indexed-docs summary { cursor: pointer; color: var(--text-secondary); }
+        .indexed-docs ul { margin-top: 0.5rem; padding-left: 1.5rem; max-height: 100px; overflow-y: auto; }
 
-        .folder-item.selected {
-            background: #e3f2fd;
-        }
+        .empty-state { padding: 2rem; text-align: center; color: var(--text-secondary); }
 
-        .folder-item svg {
-            color: #fbbc05;
-            flex-shrink: 0;
-        }
-
-        .folder-item span {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: flex-end;
-        }
-
-        /* Responsive */
         @media (max-width: 640px) {
-            .header {
-                padding: 1rem;
-            }
-
-            .header-actions {
-                flex-wrap: wrap;
-            }
-
-            .container {
-                padding: 5rem 1rem 1rem;
-            }
-
-            .chat-section {
-                height: calc(100vh - 6rem);
-                border-radius: 0;
-            }
-
-            .message {
-                max-width: 95%;
-            }
-
-            .features {
-                grid-template-columns: 1fr;
-            }
+            .header { padding: 1rem; }
+            .header-actions { flex-wrap: wrap; }
+            .container { padding: 5rem 1rem 1rem; }
+            .chat-section { height: calc(100vh - 6rem); border-radius: 0; }
+            .message { max-width: 95%; }
+            .features { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -542,28 +232,19 @@
         </div>
         <div class="header-actions">
             {% if authenticated %}
-                <button class="btn btn-secondary" onclick="openFolderPicker()" id="folder-btn">
+                <button class="btn btn-secondary" onclick="openFileBrowser()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
                     </svg>
-                    Choisir dossier
-                </button>
-                <button class="btn btn-primary" onclick="syncDrive()" id="sync-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                        <path d="M3 3v5h5"/>
-                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-                        <path d="M16 21h5v-5"/>
-                    </svg>
-                    Synchroniser
+                    Ajouter des documents
                 </button>
                 <a href="/logout" class="btn btn-secondary">Deconnexion</a>
             {% else %}
                 <a href="/login" class="btn btn-primary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                        <polyline points="10 17 15 12 10 7"/>
-                        <line x1="15" y1="12" x2="3" y2="12"/>
+                        <polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
                     </svg>
                     Connexion avec Google
                 </a>
@@ -573,66 +254,36 @@
 
     <main class="container">
         {% if not authenticated %}
-        <!-- Login Section -->
         <section class="login-section">
             <h1>Assistant IA pour vos documents Drive</h1>
-            <p>Connectez votre Google Drive, selectionnez un dossier et posez des questions sur vos documents. Notre IA analyse et trouve les reponses dans votre documentation.</p>
-
+            <p>Connectez votre Google Drive, selectionnez vos documents et posez des questions. Notre IA analyse et trouve les reponses.</p>
             <a href="/login" class="btn btn-primary" style="font-size: 1rem; padding: 1rem 2rem;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                    <polyline points="10 17 15 12 10 7"/>
-                    <line x1="15" y1="12" x2="3" y2="12"/>
+                    <polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
                 </svg>
                 Se connecter avec Google
             </a>
-
             <div class="features">
                 <div class="feature">
-                    <h3>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                        </svg>
-                        Selection de dossier
-                    </h3>
-                    <p>Choisissez le dossier a analyser</p>
+                    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Selection flexible</h3>
+                    <p>Choisissez des fichiers ou dossiers entiers</p>
                 </div>
                 <div class="feature">
-                    <h3>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34a853" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                        </svg>
-                        Recherche intelligente
-                    </h3>
+                    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34a853" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Recherche intelligente</h3>
                     <p>Technologie RAG pour des reponses precises</p>
                 </div>
                 <div class="feature">
-                    <h3>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbc05" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        Multi-formats
-                    </h3>
-                    <p>PDF, Docs, Sheets, texte et plus</p>
+                    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbc05" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Multi-formats</h3>
+                    <p>PDF, Docs, Sheets, Excel et plus</p>
                 </div>
             </div>
         </section>
         {% else %}
-        <!-- Chat Section -->
         <section class="chat-section">
             <div class="chat-header">
                 <div class="chat-header-left">
                     <strong>Assistant Knowledge Base</strong>
-                    {% if selected_folder %}
-                        <span class="folder-badge">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                            </svg>
-                            {{ selected_folder.name }}
-                        </span>
-                    {% endif %}
                     {% if stats %}
                         {% if stats.status == 'ready' %}
                             <span class="status-badge ready">{{ stats.total_chunks }} chunks indexes</span>
@@ -641,24 +292,21 @@
                         {% endif %}
                     {% endif %}
                 </div>
-                <button class="btn btn-secondary" onclick="clearIndex()" style="font-size: 0.75rem; padding: 0.5rem 0.75rem;">
-                    Reinitialiser
-                </button>
+                <button class="btn btn-secondary" onclick="clearIndex()" style="font-size: 0.75rem; padding: 0.5rem 0.75rem;">Reinitialiser</button>
             </div>
 
             <div class="messages" id="messages">
                 <div class="welcome" id="welcome">
                     <h2>Bienvenue !</h2>
-                    {% if not selected_folder %}
-                        <p>Commencez par selectionner un dossier Google Drive</p>
-                        <button class="btn btn-primary" onclick="openFolderPicker()">
+                    {% if stats and stats.status == 'empty' %}
+                        <p>Commencez par ajouter des documents depuis votre Drive</p>
+                        <button class="btn btn-primary" onclick="openFileBrowser()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
                             </svg>
-                            Choisir un dossier
+                            Parcourir mon Drive
                         </button>
-                    {% elif stats and stats.status == 'empty' %}
-                        <p style="color: #f57c00;">Cliquez sur "Synchroniser" pour indexer les documents du dossier "{{ selected_folder.name }}"</p>
                     {% else %}
                         <p>Posez une question sur vos documents</p>
                         <div class="suggestions">
@@ -672,28 +320,53 @@
 
             <div class="input-area">
                 <input type="text" id="user-input" placeholder="Posez votre question..." onkeypress="handleKeyPress(event)">
-                <button class="btn btn-primary" onclick="sendMessage()" id="send-btn">
-                    Envoyer
-                </button>
+                <button class="btn btn-primary" onclick="sendMessage()">Envoyer</button>
             </div>
         </section>
         {% endif %}
     </main>
 
-    <!-- Folder Picker Modal -->
-    <div class="modal-overlay" id="folder-modal">
+    <!-- File Browser Modal -->
+    <div class="modal-overlay" id="browser-modal">
         <div class="modal">
-            <h3>Selectionnez un dossier</h3>
-            <p>Choisissez le dossier contenant vos documents</p>
-            <div id="folder-loading" style="text-align: center; padding: 2rem;">
-                <div class="spinner"></div>
-                <p>Chargement des dossiers...</p>
+            <h3>Parcourir Google Drive</h3>
+
+            <div class="browser-header">
+                <div class="search-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Rechercher..." oninput="filterItems()">
+                </div>
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item current">Mon Drive</span>
+                </div>
             </div>
-            <div id="folder-list-container" style="display: none;">
-                <div class="folder-list" id="folder-list"></div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeFolderPicker()">Annuler</button>
-                    <button class="btn btn-primary" onclick="confirmFolderSelection()" id="confirm-folder-btn" disabled>Selectionner</button>
+
+            <div id="browser-loading" style="text-align: center; padding: 3rem;">
+                <div class="spinner"></div>
+                <p>Chargement...</p>
+            </div>
+
+            <div id="browser-content" style="display: none;">
+                <div class="file-list" id="file-list"></div>
+
+                <details class="indexed-docs" id="indexed-docs-section">
+                    <summary>Documents deja indexes (<span id="indexed-count">0</span>)</summary>
+                    <ul id="indexed-list"></ul>
+                </details>
+
+                <div class="selection-info">
+                    <span class="selection-count"><span id="selection-count">0</span> element(s) selectionne(s)</span>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeFileBrowser()">Annuler</button>
+                        <button class="btn btn-success" onclick="addSelectedDocuments()" id="add-btn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Ajouter
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -701,17 +374,20 @@
 
     <!-- Sync Modal -->
     <div class="modal-overlay" id="sync-modal">
-        <div class="modal">
+        <div class="modal" style="text-align: center;">
             <div class="spinner"></div>
-            <h3>Synchronisation en cours...</h3>
-            <p id="sync-status">Recuperation de vos documents Google Drive</p>
+            <h3>Indexation en cours...</h3>
+            <p id="sync-status">Traitement des documents...</p>
         </div>
     </div>
 
     <script>
         let conversationHistory = [];
-        let selectedFolderId = null;
-        let selectedFolderName = null;
+        let currentFolderId = null;
+        let folderStack = [{id: null, name: 'Mon Drive'}];
+        let allItems = [];
+        let selectedItems = new Map();
+        let indexedDocuments = [];
 
         function askQuestion(text) {
             document.getElementById('user-input').value = text;
@@ -719,36 +395,27 @@
         }
 
         function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
+            if (event.key === 'Enter') sendMessage();
         }
 
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const message = input.value.trim();
-
             if (!message) return;
 
-            // Clear welcome message
             const welcome = document.getElementById('welcome');
             if (welcome) welcome.remove();
 
-            // Add user message
             addMessage(message, 'user');
             input.value = '';
 
-            // Show typing indicator
             const typingId = showTyping();
 
             try {
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: message,
-                        history: conversationHistory
-                    })
+                    body: JSON.stringify({ message, history: conversationHistory })
                 });
 
                 const data = await response.json();
@@ -764,14 +431,12 @@
                         answerHtml += `<div class="sources"><strong>Sources:</strong> ${data.sources.join(', ')}</div>`;
                     }
                     addMessage(answerHtml, 'assistant', true);
-
-                    // Update history
                     conversationHistory.push({ role: 'user', content: message });
                     conversationHistory.push({ role: 'assistant', content: data.answer });
                 }
             } catch (error) {
                 removeTyping(typingId);
-                addMessage('Erreur de connexion. Veuillez reessayer.', 'error');
+                addMessage('Erreur de connexion.', 'error');
             }
         }
 
@@ -779,13 +444,8 @@
             const messages = document.getElementById('messages');
             const div = document.createElement('div');
             div.className = `message ${type}`;
-
-            if (isHtml) {
-                div.innerHTML = content;
-            } else {
-                div.textContent = content;
-            }
-
+            if (isHtml) div.innerHTML = content;
+            else div.textContent = content;
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
         }
@@ -802,152 +462,194 @@
         }
 
         function removeTyping(id) {
-            const typing = document.getElementById(id);
-            if (typing) typing.remove();
+            const el = document.getElementById(id);
+            if (el) el.remove();
         }
 
-        async function openFolderPicker() {
-            const modal = document.getElementById('folder-modal');
-            const loading = document.getElementById('folder-loading');
-            const listContainer = document.getElementById('folder-list-container');
-            const list = document.getElementById('folder-list');
-
+        async function openFileBrowser() {
+            const modal = document.getElementById('browser-modal');
             modal.classList.add('active');
-            loading.style.display = 'block';
-            listContainer.style.display = 'none';
-            list.innerHTML = '';
 
+            folderStack = [{id: null, name: 'Mon Drive'}];
+            currentFolderId = null;
+            selectedItems.clear();
+            updateSelectionCount();
+
+            await loadIndexedDocuments();
+            await loadFolderContents(null);
+        }
+
+        function closeFileBrowser() {
+            document.getElementById('browser-modal').classList.remove('active');
+            document.getElementById('search-input').value = '';
+        }
+
+        async function loadIndexedDocuments() {
             try {
-                const response = await fetch('/folders');
+                const response = await fetch('/indexed-documents');
                 const data = await response.json();
-
-                if (data.error) {
-                    list.innerHTML = `<p style="padding: 1rem; color: var(--danger);">Erreur: ${data.error}</p>`;
-                } else if (data.folders && data.folders.length > 0) {
-                    data.folders.forEach(folder => {
-                        const item = document.createElement('div');
-                        item.className = 'folder-item';
-                        item.dataset.id = folder.id;
-                        item.dataset.name = folder.name;
-                        item.innerHTML = `
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbbc05" stroke="#fbbc05" stroke-width="1">
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                            </svg>
-                            <span>${folder.name}</span>
-                        `;
-                        item.onclick = () => selectFolder(item);
-                        list.appendChild(item);
-                    });
-                } else {
-                    list.innerHTML = '<p style="padding: 1rem; color: var(--text-secondary);">Aucun dossier trouve</p>';
+                if (data.status === 'success') {
+                    indexedDocuments = data.documents;
+                    document.getElementById('indexed-count').textContent = data.count;
+                    const list = document.getElementById('indexed-list');
+                    list.innerHTML = indexedDocuments.map(d => `<li>${d}</li>`).join('');
                 }
-
-                loading.style.display = 'none';
-                listContainer.style.display = 'block';
-            } catch (error) {
-                list.innerHTML = '<p style="padding: 1rem; color: var(--danger);">Erreur de connexion</p>';
-                loading.style.display = 'none';
-                listContainer.style.display = 'block';
+            } catch (e) {
+                console.error('Error loading indexed docs:', e);
             }
         }
 
-        function selectFolder(element) {
-            document.querySelectorAll('.folder-item').forEach(item => item.classList.remove('selected'));
-            element.classList.add('selected');
-            selectedFolderId = element.dataset.id;
-            selectedFolderName = element.dataset.name;
-            document.getElementById('confirm-folder-btn').disabled = false;
-        }
+        async function loadFolderContents(folderId) {
+            const loading = document.getElementById('browser-loading');
+            const content = document.getElementById('browser-content');
 
-        function closeFolderPicker() {
-            document.getElementById('folder-modal').classList.remove('active');
-            selectedFolderId = null;
-            selectedFolderName = null;
-        }
-
-        async function confirmFolderSelection() {
-            if (!selectedFolderId) return;
+            loading.style.display = 'block';
+            content.style.display = 'none';
 
             try {
-                const response = await fetch('/select-folder', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        folder_id: selectedFolderId,
-                        folder_name: selectedFolderName
-                    })
-                });
-
+                const url = folderId ? `/browse?folder_id=${folderId}` : '/browse';
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    closeFolderPicker();
-                    location.reload();
-                } else {
-                    alert('Erreur: ' + data.error);
+                    allItems = data.items;
+                    currentFolderId = folderId;
+                    renderItems(allItems);
+                    updateBreadcrumb();
                 }
-            } catch (error) {
-                alert('Erreur de connexion');
+
+                loading.style.display = 'none';
+                content.style.display = 'block';
+            } catch (e) {
+                console.error('Error loading folder:', e);
+                loading.innerHTML = '<p style="color: var(--danger);">Erreur de chargement</p>';
             }
         }
 
-        async function syncDrive() {
-            const modal = document.getElementById('sync-modal');
-            const status = document.getElementById('sync-status');
-            const btn = document.getElementById('sync-btn');
+        function renderItems(items) {
+            const list = document.getElementById('file-list');
 
-            modal.classList.add('active');
-            btn.disabled = true;
-            status.textContent = 'Recuperation de vos documents Google Drive...';
+            if (items.length === 0) {
+                list.innerHTML = '<div class="empty-state">Aucun element</div>';
+                return;
+            }
+
+            list.innerHTML = items.map(item => {
+                const isFolder = item.type === 'folder';
+                const isSelected = selectedItems.has(item.id);
+                const isIndexed = indexedDocuments.includes(item.name);
+                const ext = item.name.split('.').pop().toUpperCase();
+
+                return `
+                    <div class="file-item ${isSelected ? 'selected' : ''}" data-id="${item.id}" data-type="${item.type}" data-name="${item.name}">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelection(event, '${item.id}', '${item.type}', '${item.name.replace(/'/g, "\\'")}')">
+                        ${isFolder ?
+                            `<svg class="icon folder" viewBox="0 0 24 24" fill="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` :
+                            `<svg class="icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
+                        }
+                        <span class="name">${item.name}${isIndexed ? ' ✓' : ''}</span>
+                        ${isFolder ?
+                            `<button class="btn btn-secondary enter-btn" onclick="enterFolder(event, '${item.id}', '${item.name.replace(/'/g, "\\'")}')">Ouvrir</button>` :
+                            `<span class="type">${ext}</span>`
+                        }
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterItems() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allItems.filter(item => item.name.toLowerCase().includes(query));
+            renderItems(filtered);
+        }
+
+        function toggleSelection(event, id, type, name) {
+            event.stopPropagation();
+
+            if (selectedItems.has(id)) {
+                selectedItems.delete(id);
+            } else {
+                selectedItems.set(id, { id, type, name });
+            }
+
+            const item = event.target.closest('.file-item');
+            item.classList.toggle('selected', selectedItems.has(id));
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            document.getElementById('selection-count').textContent = selectedItems.size;
+            document.getElementById('add-btn').disabled = selectedItems.size === 0;
+        }
+
+        function enterFolder(event, folderId, folderName) {
+            event.stopPropagation();
+            folderStack.push({ id: folderId, name: folderName });
+            loadFolderContents(folderId);
+        }
+
+        function navigateToFolder(index) {
+            folderStack = folderStack.slice(0, index + 1);
+            const folder = folderStack[index];
+            loadFolderContents(folder.id);
+        }
+
+        function updateBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            breadcrumb.innerHTML = folderStack.map((folder, index) => {
+                const isLast = index === folderStack.length - 1;
+                return `
+                    ${index > 0 ? '<span class="breadcrumb-sep">/</span>' : ''}
+                    <span class="breadcrumb-item ${isLast ? 'current' : ''}" onclick="${isLast ? '' : `navigateToFolder(${index})`}">${folder.name}</span>
+                `;
+            }).join('');
+        }
+
+        async function addSelectedDocuments() {
+            if (selectedItems.size === 0) return;
+
+            closeFileBrowser();
+
+            const syncModal = document.getElementById('sync-modal');
+            const syncStatus = document.getElementById('sync-status');
+            syncModal.classList.add('active');
+            syncStatus.textContent = `Indexation de ${selectedItems.size} element(s)...`;
 
             try {
-                const response = await fetch('/sync', {
+                const items = Array.from(selectedItems.values());
+                const response = await fetch('/add-documents', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ items })
                 });
+
                 const data = await response.json();
 
                 if (data.error) {
-                    if (data.needs_folder) {
-                        status.textContent = 'Veuillez d\'abord selectionner un dossier';
-                        setTimeout(() => {
-                            modal.classList.remove('active');
-                            openFolderPicker();
-                        }, 1500);
-                    } else {
-                        status.textContent = 'Erreur: ' + data.error;
-                        setTimeout(() => modal.classList.remove('active'), 2000);
-                    }
+                    syncStatus.textContent = 'Erreur: ' + data.error;
                 } else {
-                    status.textContent = data.message;
-                    setTimeout(() => {
-                        modal.classList.remove('active');
-                        location.reload();
-                    }, 2000);
+                    syncStatus.textContent = data.message;
                 }
-            } catch (error) {
-                status.textContent = 'Erreur de connexion';
-                setTimeout(() => modal.classList.remove('active'), 2000);
-            }
 
-            btn.disabled = false;
+                setTimeout(() => {
+                    syncModal.classList.remove('active');
+                    if (!data.error) location.reload();
+                }, 2000);
+
+            } catch (error) {
+                syncStatus.textContent = 'Erreur de connexion';
+                setTimeout(() => syncModal.classList.remove('active'), 2000);
+            }
         }
 
         async function clearIndex() {
-            if (!confirm('Etes-vous sur de vouloir supprimer tous les documents indexes ?')) {
-                return;
-            }
+            if (!confirm('Supprimer tous les documents indexes ?')) return;
 
             try {
                 const response = await fetch('/clear', { method: 'POST' });
                 const data = await response.json();
-
-                if (data.status === 'success') {
-                    location.reload();
-                } else {
-                    alert('Erreur: ' + data.error);
-                }
+                if (data.status === 'success') location.reload();
+                else alert('Erreur: ' + data.error);
             } catch (error) {
                 alert('Erreur de connexion');
             }
