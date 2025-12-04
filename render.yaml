@@ -1,0 +1,44 @@
+# Render Blueprint Configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: drive-knowledge-base
+    runtime: python
+    region: frankfurt  # or oregon, ohio, singapore
+    plan: free  # or starter, standard, pro
+
+    # Build settings
+    buildCommand: pip install -r requirements.txt
+
+    # Start command
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+
+    # Health check
+    healthCheckPath: /health
+
+    # Environment variables (set in Render dashboard for security)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      - key: FLASK_ENV
+        value: production
+      - key: GOOGLE_CLIENT_ID
+        sync: false  # Set manually in dashboard
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false  # Set manually in dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in dashboard
+      - key: FLASK_SECRET_KEY
+        generateValue: true  # Auto-generate secure secret
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: drive-knowledge-base
+          property: url
+
+    # Persistent disk for ChromaDB data
+    disk:
+      name: chroma-data
+      mountPath: /opt/render/project/src/chroma_data
+      sizeGB: 1
