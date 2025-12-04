@@ -69,17 +69,25 @@ def index():
     """Home page"""
     authenticated = is_authenticated()
     stats = None
+    selected_folder = None
 
     if authenticated:
         try:
             rag = get_rag_engine()
             stats = rag.get_stats()
+            if session.get('selected_folder_id'):
+                selected_folder = {
+                    'id': session.get('selected_folder_id'),
+                    'name': session.get('selected_folder_name', 'Selected Folder')
+                }
         except:
             stats = {'status': 'error'}
 
     return render_template('index.html',
                          authenticated=authenticated,
-                         stats=stats)
+                         stats=stats,
+                         selected_folder=selected_folder,
+                         google_client_id=os.environ.get('GOOGLE_CLIENT_ID'))
 
 
 @app.route('/login')
@@ -122,6 +130,53 @@ def logout_route():
     return redirect(url_for('index'))
 
 
+@app.route('/folders')
+def list_folders():
+    """List all folders from Google Drive"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        drive_service = DriveService(credentials)
+        folders = drive_service.list_folders()
+
+        return jsonify({
+            'status': 'success',
+            'folders': folders
+        })
+
+    except Exception as e:
+        print(f"Error listing folders: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/select-folder', methods=['POST'])
+def select_folder():
+    """Select a folder to sync"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.json
+    folder_id = data.get('folder_id')
+    folder_name = data.get('folder_name', 'Selected Folder')
+
+    if not folder_id:
+        return jsonify({'error': 'No folder_id provided'}), 400
+
+    session['selected_folder_id'] = folder_id
+    session['selected_folder_name'] = folder_name
+
+    return jsonify({
+        'status': 'success',
+        'message': f"Folder '{folder_name}' selected",
+        'folder_id': folder_id
+    })
+
+
 @app.route('/sync', methods=['POST'])
 def sync_drive():
     """Sync documents from Google Drive"""
@@ -133,14 +188,24 @@ def sync_drive():
         if not credentials:
             return jsonify({'error': 'Invalid credentials'}), 401
 
+        # Get folder_id from request or session
+        data = request.json or {}
+        folder_id = data.get('folder_id') or session.get('selected_folder_id')
+
+        if not folder_id:
+            return jsonify({
+                'error': 'No folder selected. Please select a folder first.',
+                'needs_folder': True
+            }), 400
+
         # Get documents from Drive
         drive_service = DriveService(credentials)
-        documents = drive_service.get_all_documents()
+        documents = drive_service.get_all_documents(folder_id=folder_id)
 
         if not documents:
             return jsonify({
                 'status': 'warning',
-                'message': 'No documents found in your Drive',
+                'message': 'No documents found in the selected folder',
                 'documents_found': 0
             })
 
@@ -148,9 +213,11 @@ def sync_drive():
         rag = get_rag_engine()
         result = rag.index_documents(documents)
 
+        folder_name = session.get('selected_folder_name', 'Selected folder')
+
         return jsonify({
             'status': 'success',
-            'message': f"Successfully indexed {result['chunks_indexed']} chunks from {result['documents_processed']} documents",
+            'message': f"Successfully indexed {result['chunks_indexed']} chunks from {result['documents_processed']} documents in '{folder_name}'",
             'documents_processed': result['documents_processed'],
             'chunks_indexed': result['chunks_indexed']
         })

@@ -46,6 +46,38 @@ class DriveService:
         self.service = build('drive', 'v3', credentials=credentials)
         self.credentials = credentials
 
+    def list_folders(self) -> List[Dict]:
+        """
+        List all folders from Google Drive
+
+        Returns:
+            List of folder metadata dictionaries
+        """
+        all_folders = []
+        page_token = None
+
+        try:
+            while True:
+                results = self.service.files().list(
+                    pageSize=100,
+                    fields="nextPageToken, files(id, name, mimeType)",
+                    q="mimeType='application/vnd.google-apps.folder' and trashed=false",
+                    pageToken=page_token
+                ).execute()
+
+                folders = results.get('files', [])
+                all_folders.extend(folders)
+
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+
+            return all_folders
+
+        except HttpError as error:
+            print(f"Error listing folders: {error}")
+            return []
+
     def list_files(self, page_size: int = 100, folder_id: Optional[str] = None) -> List[Dict]:
         """
         List files from Google Drive
@@ -62,10 +94,11 @@ class DriveService:
 
         # Build query for supported file types
         mime_conditions = " or ".join([f"mimeType='{mime}'" for mime in SUPPORTED_MIME_TYPES.keys()])
-        query = f"({mime_conditions}) and trashed=false"
 
         if folder_id:
-            query = f"'{folder_id}' in parents and ({mime_conditions}) and trashed=false"
+            query = f"'{folder_id}' in parents and trashed=false"
+        else:
+            query = f"({mime_conditions}) and trashed=false"
 
         try:
             while True:
@@ -88,6 +121,30 @@ class DriveService:
         except HttpError as error:
             print(f"Error listing files: {error}")
             return []
+
+    def list_files_recursive(self, folder_id: str) -> List[Dict]:
+        """
+        Recursively list all files in a folder and its subfolders
+
+        Args:
+            folder_id: The folder ID to start from
+
+        Returns:
+            List of file metadata dictionaries
+        """
+        all_files = []
+
+        def process_folder(fid: str):
+            items = self.list_files(folder_id=fid)
+            for item in items:
+                if item['mimeType'] == 'application/vnd.google-apps.folder':
+                    # Recursively process subfolder
+                    process_folder(item['id'])
+                elif item['mimeType'] in SUPPORTED_MIME_TYPES:
+                    all_files.append(item)
+
+        process_folder(folder_id)
+        return all_files
 
     def get_file_content(self, file_id: str, mime_type: str) -> Optional[str]:
         """
@@ -224,14 +281,21 @@ class DriveService:
             print(f"Error parsing HTML: {e}")
             return ""
 
-    def get_all_documents(self) -> List[Dict]:
+    def get_all_documents(self, folder_id: Optional[str] = None) -> List[Dict]:
         """
         Fetch all documents and their content from Drive
+
+        Args:
+            folder_id: Optional folder ID to fetch documents from (recursive)
 
         Returns:
             List of documents with metadata and content
         """
-        files = self.list_files()
+        if folder_id:
+            files = self.list_files_recursive(folder_id)
+        else:
+            files = self.list_files()
+
         documents = []
 
         for file in files:

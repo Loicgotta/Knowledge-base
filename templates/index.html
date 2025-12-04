@@ -64,7 +64,7 @@
 
         .header-actions {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
         }
 
@@ -80,6 +80,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            text-decoration: none;
         }
 
         .btn-primary {
@@ -191,6 +192,32 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .folder-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .folder-badge svg {
+            width: 14px;
+            height: 14px;
         }
 
         .status-badge {
@@ -393,16 +420,19 @@
             padding: 2rem;
             max-width: 500px;
             width: 90%;
-            text-align: center;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .modal h3 {
             margin-bottom: 1rem;
+            text-align: center;
         }
 
         .modal p {
             color: var(--text-secondary);
             margin-bottom: 1.5rem;
+            text-align: center;
         }
 
         .spinner {
@@ -419,10 +449,63 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Folder List */
+        .folder-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .folder-item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+
+        .folder-item:hover {
+            background: var(--bg-light);
+        }
+
+        .folder-item.selected {
+            background: #e3f2fd;
+        }
+
+        .folder-item svg {
+            color: #fbbc05;
+            flex-shrink: 0;
+        }
+
+        .folder-item span {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
         /* Responsive */
         @media (max-width: 640px) {
             .header {
                 padding: 1rem;
+            }
+
+            .header-actions {
+                flex-wrap: wrap;
             }
 
             .container {
@@ -459,7 +542,13 @@
         </div>
         <div class="header-actions">
             {% if authenticated %}
-                <button class="btn btn-secondary" onclick="syncDrive()" id="sync-btn">
+                <button class="btn btn-secondary" onclick="openFolderPicker()" id="folder-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Choisir dossier
+                </button>
+                <button class="btn btn-primary" onclick="syncDrive()" id="sync-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                         <path d="M3 3v5h5"/>
@@ -468,7 +557,7 @@
                     </svg>
                     Synchroniser
                 </button>
-                <a href="/logout" class="btn btn-secondary">Déconnexion</a>
+                <a href="/logout" class="btn btn-secondary">Deconnexion</a>
             {% else %}
                 <a href="/login" class="btn btn-primary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -487,7 +576,7 @@
         <!-- Login Section -->
         <section class="login-section">
             <h1>Assistant IA pour vos documents Drive</h1>
-            <p>Connectez votre Google Drive et posez des questions sur tous vos documents. Notre IA analyse et trouve les réponses dans votre documentation.</p>
+            <p>Connectez votre Google Drive, selectionnez un dossier et posez des questions sur vos documents. Notre IA analyse et trouve les reponses dans votre documentation.</p>
 
             <a href="/login" class="btn btn-primary" style="font-size: 1rem; padding: 1rem 2rem;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -502,13 +591,11 @@
                 <div class="feature">
                     <h3>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                         </svg>
-                        Accès sécurisé
+                        Selection de dossier
                     </h3>
-                    <p>Lecture seule de vos documents via OAuth Google</p>
+                    <p>Choisissez le dossier a analyser</p>
                 </div>
                 <div class="feature">
                     <h3>
@@ -518,7 +605,7 @@
                         </svg>
                         Recherche intelligente
                     </h3>
-                    <p>Technologie RAG pour des réponses précises</p>
+                    <p>Technologie RAG pour des reponses precises</p>
                 </div>
                 <div class="feature">
                     <h3>
@@ -536,31 +623,47 @@
         <!-- Chat Section -->
         <section class="chat-section">
             <div class="chat-header">
-                <div>
+                <div class="chat-header-left">
                     <strong>Assistant Knowledge Base</strong>
+                    {% if selected_folder %}
+                        <span class="folder-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            {{ selected_folder.name }}
+                        </span>
+                    {% endif %}
                     {% if stats %}
                         {% if stats.status == 'ready' %}
-                            <span class="status-badge ready">{{ stats.total_chunks }} chunks indexés</span>
+                            <span class="status-badge ready">{{ stats.total_chunks }} chunks indexes</span>
                         {% elif stats.status == 'empty' %}
                             <span class="status-badge empty">Aucun document</span>
                         {% endif %}
                     {% endif %}
                 </div>
                 <button class="btn btn-secondary" onclick="clearIndex()" style="font-size: 0.75rem; padding: 0.5rem 0.75rem;">
-                    Réinitialiser
+                    Reinitialiser
                 </button>
             </div>
 
             <div class="messages" id="messages">
                 <div class="welcome" id="welcome">
                     <h2>Bienvenue !</h2>
-                    <p>Posez une question sur vos documents Google Drive</p>
-                    {% if stats and stats.status == 'empty' %}
-                        <p style="color: #f57c00;">Cliquez sur "Synchroniser" pour indexer vos documents</p>
+                    {% if not selected_folder %}
+                        <p>Commencez par selectionner un dossier Google Drive</p>
+                        <button class="btn btn-primary" onclick="openFolderPicker()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            Choisir un dossier
+                        </button>
+                    {% elif stats and stats.status == 'empty' %}
+                        <p style="color: #f57c00;">Cliquez sur "Synchroniser" pour indexer les documents du dossier "{{ selected_folder.name }}"</p>
                     {% else %}
+                        <p>Posez une question sur vos documents</p>
                         <div class="suggestions">
-                            <span class="suggestion" onclick="askQuestion(this.textContent)">Résume les documents principaux</span>
-                            <span class="suggestion" onclick="askQuestion(this.textContent)">Quels sont les sujets abordés ?</span>
+                            <span class="suggestion" onclick="askQuestion(this.textContent)">Resume les documents principaux</span>
+                            <span class="suggestion" onclick="askQuestion(this.textContent)">Quels sont les sujets abordes ?</span>
                             <span class="suggestion" onclick="askQuestion(this.textContent)">Trouve les informations importantes</span>
                         </div>
                     {% endif %}
@@ -577,17 +680,38 @@
         {% endif %}
     </main>
 
+    <!-- Folder Picker Modal -->
+    <div class="modal-overlay" id="folder-modal">
+        <div class="modal">
+            <h3>Selectionnez un dossier</h3>
+            <p>Choisissez le dossier contenant vos documents</p>
+            <div id="folder-loading" style="text-align: center; padding: 2rem;">
+                <div class="spinner"></div>
+                <p>Chargement des dossiers...</p>
+            </div>
+            <div id="folder-list-container" style="display: none;">
+                <div class="folder-list" id="folder-list"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeFolderPicker()">Annuler</button>
+                    <button class="btn btn-primary" onclick="confirmFolderSelection()" id="confirm-folder-btn" disabled>Selectionner</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Sync Modal -->
     <div class="modal-overlay" id="sync-modal">
         <div class="modal">
             <div class="spinner"></div>
             <h3>Synchronisation en cours...</h3>
-            <p id="sync-status">Récupération de vos documents Google Drive</p>
+            <p id="sync-status">Recuperation de vos documents Google Drive</p>
         </div>
     </div>
 
     <script>
         let conversationHistory = [];
+        let selectedFolderId = null;
+        let selectedFolderName = null;
 
         function askQuestion(text) {
             document.getElementById('user-input').value = text;
@@ -647,7 +771,7 @@
                 }
             } catch (error) {
                 removeTyping(typingId);
-                addMessage('Erreur de connexion. Veuillez réessayer.', 'error');
+                addMessage('Erreur de connexion. Veuillez reessayer.', 'error');
             }
         }
 
@@ -682,6 +806,91 @@
             if (typing) typing.remove();
         }
 
+        async function openFolderPicker() {
+            const modal = document.getElementById('folder-modal');
+            const loading = document.getElementById('folder-loading');
+            const listContainer = document.getElementById('folder-list-container');
+            const list = document.getElementById('folder-list');
+
+            modal.classList.add('active');
+            loading.style.display = 'block';
+            listContainer.style.display = 'none';
+            list.innerHTML = '';
+
+            try {
+                const response = await fetch('/folders');
+                const data = await response.json();
+
+                if (data.error) {
+                    list.innerHTML = `<p style="padding: 1rem; color: var(--danger);">Erreur: ${data.error}</p>`;
+                } else if (data.folders && data.folders.length > 0) {
+                    data.folders.forEach(folder => {
+                        const item = document.createElement('div');
+                        item.className = 'folder-item';
+                        item.dataset.id = folder.id;
+                        item.dataset.name = folder.name;
+                        item.innerHTML = `
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbbc05" stroke="#fbbc05" stroke-width="1">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            <span>${folder.name}</span>
+                        `;
+                        item.onclick = () => selectFolder(item);
+                        list.appendChild(item);
+                    });
+                } else {
+                    list.innerHTML = '<p style="padding: 1rem; color: var(--text-secondary);">Aucun dossier trouve</p>';
+                }
+
+                loading.style.display = 'none';
+                listContainer.style.display = 'block';
+            } catch (error) {
+                list.innerHTML = '<p style="padding: 1rem; color: var(--danger);">Erreur de connexion</p>';
+                loading.style.display = 'none';
+                listContainer.style.display = 'block';
+            }
+        }
+
+        function selectFolder(element) {
+            document.querySelectorAll('.folder-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedFolderId = element.dataset.id;
+            selectedFolderName = element.dataset.name;
+            document.getElementById('confirm-folder-btn').disabled = false;
+        }
+
+        function closeFolderPicker() {
+            document.getElementById('folder-modal').classList.remove('active');
+            selectedFolderId = null;
+            selectedFolderName = null;
+        }
+
+        async function confirmFolderSelection() {
+            if (!selectedFolderId) return;
+
+            try {
+                const response = await fetch('/select-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folder_id: selectedFolderId,
+                        folder_name: selectedFolderName
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    closeFolderPicker();
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.error);
+                }
+            } catch (error) {
+                alert('Erreur de connexion');
+            }
+        }
+
         async function syncDrive() {
             const modal = document.getElementById('sync-modal');
             const status = document.getElementById('sync-status');
@@ -689,15 +898,27 @@
 
             modal.classList.add('active');
             btn.disabled = true;
-            status.textContent = 'Récupération de vos documents Google Drive...';
+            status.textContent = 'Recuperation de vos documents Google Drive...';
 
             try {
-                const response = await fetch('/sync', { method: 'POST' });
+                const response = await fetch('/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
                 const data = await response.json();
 
                 if (data.error) {
-                    status.textContent = 'Erreur: ' + data.error;
-                    setTimeout(() => modal.classList.remove('active'), 2000);
+                    if (data.needs_folder) {
+                        status.textContent = 'Veuillez d\'abord selectionner un dossier';
+                        setTimeout(() => {
+                            modal.classList.remove('active');
+                            openFolderPicker();
+                        }, 1500);
+                    } else {
+                        status.textContent = 'Erreur: ' + data.error;
+                        setTimeout(() => modal.classList.remove('active'), 2000);
+                    }
                 } else {
                     status.textContent = data.message;
                     setTimeout(() => {
@@ -714,7 +935,7 @@
         }
 
         async function clearIndex() {
-            if (!confirm('Êtes-vous sûr de vouloir supprimer tous les documents indexés ?')) {
+            if (!confirm('Etes-vous sur de vouloir supprimer tous les documents indexes ?')) {
                 return;
             }
 
