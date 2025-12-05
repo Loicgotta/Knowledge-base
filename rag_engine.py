@@ -165,6 +165,12 @@ class RAGEngine:
                 name=self.collection_name,
                 metadata={"hnsw:space": "cosine"}
             )
+        else:
+            # Ensure we have a valid collection reference for incremental adds
+            self.collection = self.chroma_client.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"}
+            )
 
         # Get embeddings for all chunks
         print(f"Generating embeddings for {len(all_chunks)} chunks...")
