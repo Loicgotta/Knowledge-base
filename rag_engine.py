@@ -5,6 +5,7 @@ Retrieval Augmented Generation engine using OpenAI embeddings and ChromaDB
 
 import os
 import hashlib
+import time
 from typing import List, Dict, Optional
 from openai import OpenAI
 import chromadb
@@ -23,19 +24,13 @@ class RAGEngine:
         """
         self.user_id = user_id
         self.collection_name = f"docs_{self._hash_user_id(user_id)}"
+        self.persist_path = os.environ.get("CHROMA_PERSIST_DIR", "./chroma_data")
 
         # Initialize OpenAI client
         self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-        # Initialize ChromaDB with persistent storage
-        persist_path = os.environ.get("CHROMA_PERSIST_DIR", "./chroma_data")
-        self.chroma_client = chromadb.PersistentClient(path=persist_path)
-
-        # Get or create collection for this user
-        self.collection = self.chroma_client.get_or_create_collection(
-            name=self.collection_name,
-            metadata={"hnsw:space": "cosine"}
-        )
+        # Initialize ChromaDB
+        self._init_chroma()
 
         # Tokenizer for text splitting
         self.tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -46,6 +41,23 @@ class RAGEngine:
         self.embedding_model = "text-embedding-3-small"
         self.chat_model = "gpt-4o-mini"
         self.max_context_chunks = 5
+
+    def _init_chroma(self):
+        """Initialize or reinitialize ChromaDB connection"""
+        self.chroma_client = chromadb.PersistentClient(path=self.persist_path)
+        self.collection = self.chroma_client.get_or_create_collection(
+            name=self.collection_name,
+            metadata={"hnsw:space": "cosine"}
+        )
+
+    def _ensure_connection(self):
+        """Ensure ChromaDB connection is valid, reconnect if needed"""
+        try:
+            # Test connection by getting collection count
+            self.collection.count()
+        except Exception as e:
+            print(f"ChromaDB connection lost, reconnecting: {e}")
+            self._init_chroma()
 
     def _hash_user_id(self, user_id: str) -> str:
         """Create a short hash of user ID for collection naming"""
@@ -129,6 +141,9 @@ class RAGEngine:
         Returns:
             Indexing statistics
         """
+        # Ensure connection is valid before starting
+        self._ensure_connection()
+
         all_chunks = []
         all_ids = []
         all_metadatas = []
@@ -154,6 +169,9 @@ class RAGEngine:
         if not all_chunks:
             return {'status': 'empty', 'chunks_indexed': 0}
 
+        # Reinitialize ChromaDB to ensure fresh connection
+        self._init_chroma()
+
         if clear_existing:
             # Clear existing collection for fresh index
             try:
@@ -176,13 +194,28 @@ class RAGEngine:
         print(f"Generating embeddings for {len(all_chunks)} chunks...")
         embeddings = self._get_embeddings(all_chunks)
 
-        # Add to collection (upsert to handle duplicates)
-        self.collection.upsert(
-            ids=all_ids,
-            embeddings=embeddings,
-            documents=all_chunks,
-            metadatas=all_metadatas
-        )
+        # Add to collection with retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.collection.upsert(
+                    ids=all_ids,
+                    embeddings=embeddings,
+                    documents=all_chunks,
+                    metadatas=all_metadatas
+                )
+                break
+            except Exception as e:
+                print(f"Upsert attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    self._init_chroma()
+                    self.collection = self.chroma_client.get_or_create_collection(
+                        name=self.collection_name,
+                        metadata={"hnsw:space": "cosine"}
+                    )
+                else:
+                    raise
 
         return {
             'status': 'success',
@@ -205,6 +238,8 @@ class RAGEngine:
     def get_indexed_documents(self) -> List[str]:
         """Get list of indexed document names"""
         try:
+            # Ensure connection is valid
+            self._ensure_connection()
             # Get all metadatas from collection
             results = self.collection.get(include=['metadatas'])
             doc_names = set()
@@ -215,7 +250,18 @@ class RAGEngine:
             return list(doc_names)
         except Exception as e:
             print(f"Error getting indexed documents: {e}")
-            return []
+            # Try to reconnect and retry once
+            try:
+                self._init_chroma()
+                results = self.collection.get(include=['metadatas'])
+                doc_names = set()
+                if results['metadatas']:
+                    for meta in results['metadatas']:
+                        if meta.get('doc_name'):
+                            doc_names.add(meta['doc_name'])
+                return list(doc_names)
+            except:
+                return []
 
     def search(self, query: str, n_results: int = 5) -> List[Dict]:
         """
@@ -228,15 +274,27 @@ class RAGEngine:
         Returns:
             List of relevant chunks with metadata
         """
+        # Ensure connection is valid
+        self._ensure_connection()
+
         # Get query embedding
         query_embedding = self._get_embeddings([query])[0]
 
-        # Search collection
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results,
-            include=['documents', 'metadatas', 'distances']
-        )
+        # Search collection with retry
+        try:
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results,
+                include=['documents', 'metadatas', 'distances']
+            )
+        except Exception as e:
+            print(f"Search failed, retrying: {e}")
+            self._init_chroma()
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results,
+                include=['documents', 'metadatas', 'distances']
+            )
 
         # Format results
         formatted_results = []
@@ -328,6 +386,7 @@ Question: {question}"""
     def get_stats(self) -> Dict:
         """Get statistics about the indexed documents"""
         try:
+            self._ensure_connection()
             count = self.collection.count()
             return {
                 'total_chunks': count,
@@ -335,15 +394,26 @@ Question: {question}"""
                 'status': 'ready' if count > 0 else 'empty'
             }
         except Exception as e:
-            return {
-                'total_chunks': 0,
-                'status': 'error',
-                'error': str(e)
-            }
+            # Try to reconnect
+            try:
+                self._init_chroma()
+                count = self.collection.count()
+                return {
+                    'total_chunks': count,
+                    'collection_name': self.collection_name,
+                    'status': 'ready' if count > 0 else 'empty'
+                }
+            except:
+                return {
+                    'total_chunks': 0,
+                    'status': 'error',
+                    'error': str(e)
+                }
 
     def clear_index(self) -> bool:
         """Clear all indexed documents for this user"""
         try:
+            self._init_chroma()  # Ensure fresh connection
             self.chroma_client.delete_collection(self.collection_name)
             self.collection = self.chroma_client.create_collection(
                 name=self.collection_name,
