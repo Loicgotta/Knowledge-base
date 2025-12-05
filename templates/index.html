@@ -626,15 +626,21 @@
                 const data = await response.json();
 
                 if (data.error) {
-                    syncStatus.textContent = 'Erreur: ' + data.error;
+                    // Afficher l'erreur detaillee
+                    let errorMsg = `Erreur (${data.error_type || 'Unknown'}): ${data.error}`;
+                    if (data.traceback) {
+                        console.error('Full traceback:', data.traceback);
+                        errorMsg += '\n\nVoir console (F12) pour details';
+                    }
+                    syncStatus.innerHTML = `<span style="color: var(--danger); white-space: pre-wrap; font-size: 0.8rem;">${errorMsg}</span>`;
+                    setTimeout(() => syncModal.classList.remove('active'), 5000);
                 } else {
                     syncStatus.textContent = data.message;
+                    setTimeout(() => {
+                        syncModal.classList.remove('active');
+                        location.reload();
+                    }, 2000);
                 }
-
-                setTimeout(() => {
-                    syncModal.classList.remove('active');
-                    if (!data.error) location.reload();
-                }, 2000);
 
             } catch (error) {
                 syncStatus.textContent = 'Erreur de connexion';

@@ -5,6 +5,7 @@ Main Flask application for Google Drive document Q&A
 
 import os
 import secrets
+import traceback
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_cors import CORS
 from flask_session import Session
@@ -263,8 +264,13 @@ def add_documents():
         })
 
     except Exception as e:
-        print(f"Add documents error: {e}")
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"Add documents error: {e}\n{error_trace}")
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'traceback': error_trace
+        }), 500
 
 
 @app.route('/indexed-documents')
@@ -331,8 +337,13 @@ def sync_drive():
         })
 
     except Exception as e:
-        print(f"Sync error: {e}")
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"Sync error: {e}\n{error_trace}")
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'traceback': error_trace
+        }), 500
 
 
 @app.route('/chat', methods=['POST'])
@@ -370,8 +381,13 @@ def chat():
         })
 
     except Exception as e:
-        print(f"Chat error: {e}")
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"Chat error: {e}\n{error_trace}")
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'traceback': error_trace
+        }), 500
 
 
 @app.route('/stats')
