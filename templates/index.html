@@ -378,6 +378,7 @@
             <div class="spinner"></div>
             <h3>Indexation en cours...</h3>
             <p id="sync-status">Traitement des documents...</p>
+            <button class="btn btn-secondary" id="close-sync-modal" style="display: none; margin-top: 1rem;" onclick="closeSyncModal()">Fermer</button>
         </div>
     </div>
 
@@ -626,14 +627,17 @@
                 const data = await response.json();
 
                 if (data.error) {
-                    // Afficher l'erreur detaillee
-                    let errorMsg = `Erreur (${data.error_type || 'Unknown'}): ${data.error}`;
+                    // Afficher l'erreur complete directement sur l'ecran
+                    let errorMsg = `ERREUR: ${data.error_type || 'Unknown'}\n\n${data.error}`;
                     if (data.traceback) {
-                        console.error('Full traceback:', data.traceback);
-                        errorMsg += '\n\nVoir console (F12) pour details';
+                        errorMsg += `\n\n--- TRACEBACK COMPLET ---\n${data.traceback}`;
                     }
-                    syncStatus.innerHTML = `<span style="color: var(--danger); white-space: pre-wrap; font-size: 0.8rem;">${errorMsg}</span>`;
-                    setTimeout(() => syncModal.classList.remove('active'), 5000);
+                    syncModal.querySelector('.modal').style.maxWidth = '90%';
+                    syncModal.querySelector('.modal').style.maxHeight = '90vh';
+                    syncModal.querySelector('.spinner').style.display = 'none';
+                    syncModal.querySelector('h3').textContent = 'ERREUR';
+                    document.getElementById('close-sync-modal').style.display = 'inline-block';
+                    syncStatus.innerHTML = `<pre style="color: var(--danger); white-space: pre-wrap; font-size: 0.75rem; text-align: left; max-height: 60vh; overflow-y: auto; background: #fff5f5; padding: 1rem; border-radius: 8px; border: 2px solid var(--danger);">${errorMsg}</pre>`;
                 } else {
                     syncStatus.textContent = data.message;
                     setTimeout(() => {
@@ -643,9 +647,23 @@
                 }
 
             } catch (error) {
-                syncStatus.textContent = 'Erreur de connexion';
-                setTimeout(() => syncModal.classList.remove('active'), 2000);
+                syncModal.querySelector('.spinner').style.display = 'none';
+                syncModal.querySelector('h3').textContent = 'ERREUR';
+                document.getElementById('close-sync-modal').style.display = 'inline-block';
+                syncStatus.innerHTML = `<pre style="color: var(--danger); white-space: pre-wrap; font-size: 0.85rem; text-align: left; background: #fff5f5; padding: 1rem; border-radius: 8px; border: 2px solid var(--danger);">ERREUR RESEAU:\n\n${error.message || error}\n\nVerifiez votre connexion internet.</pre>`;
             }
+        }
+
+        function closeSyncModal() {
+            const syncModal = document.getElementById('sync-modal');
+            syncModal.classList.remove('active');
+            // Reset modal state
+            syncModal.querySelector('.modal').style.maxWidth = '';
+            syncModal.querySelector('.modal').style.maxHeight = '';
+            syncModal.querySelector('.spinner').style.display = 'block';
+            syncModal.querySelector('h3').textContent = 'Indexation en cours...';
+            document.getElementById('sync-status').textContent = 'Traitement des documents...';
+            document.getElementById('close-sync-modal').style.display = 'none';
         }
 
         async function clearIndex() {
