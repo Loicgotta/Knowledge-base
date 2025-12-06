@@ -624,7 +624,16 @@
                     body: JSON.stringify({ items })
                 });
 
-                const data = await response.json();
+                // Lire la reponse brute d'abord
+                const responseText = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    // Si ce n'est pas du JSON, afficher la reponse brute
+                    throw new Error(`Reponse serveur invalide (HTTP ${response.status}):\n\n${responseText}`);
+                }
 
                 if (data.error) {
                     // Afficher l'erreur complete directement sur l'ecran
@@ -647,10 +656,12 @@
                 }
 
             } catch (error) {
+                syncModal.querySelector('.modal').style.maxWidth = '90%';
+                syncModal.querySelector('.modal').style.maxHeight = '90vh';
                 syncModal.querySelector('.spinner').style.display = 'none';
                 syncModal.querySelector('h3').textContent = 'ERREUR';
                 document.getElementById('close-sync-modal').style.display = 'inline-block';
-                syncStatus.innerHTML = `<pre style="color: var(--danger); white-space: pre-wrap; font-size: 0.85rem; text-align: left; background: #fff5f5; padding: 1rem; border-radius: 8px; border: 2px solid var(--danger);">ERREUR RESEAU:\n\n${error.message || error}\n\nVerifiez votre connexion internet.</pre>`;
+                syncStatus.innerHTML = `<pre style="color: var(--danger); white-space: pre-wrap; font-size: 0.75rem; text-align: left; max-height: 60vh; overflow-y: auto; background: #fff5f5; padding: 1rem; border-radius: 8px; border: 2px solid var(--danger);">ERREUR:\n\n${error.message || error}</pre>`;
             }
         }
 
