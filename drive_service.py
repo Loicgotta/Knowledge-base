@@ -181,22 +181,25 @@ class DriveService:
         for file_id in file_ids:
             try:
                 # Get file metadata
+                print(f"[get_documents_by_ids] Fetching metadata for {file_id}...")
                 file_meta = self.service.files().get(
                     fileId=file_id,
                     fields="id, name, mimeType, modifiedTime"
                 ).execute()
 
                 mime_type = file_meta['mimeType']
+                file_name = file_meta['name']
+                print(f"[get_documents_by_ids] File: {file_name} | Type: {mime_type}")
 
                 # Skip folders
                 if mime_type == 'application/vnd.google-apps.folder':
+                    print(f"[get_documents_by_ids] Skipping folder")
                     continue
 
                 # Try to process any file type (no longer skip unsupported types)
-                file_name = file_meta['name']
-                print(f"Processing: {file_name} ({mime_type})")
-
+                print(f"[get_documents_by_ids] Getting content...")
                 content = self.get_file_content(file_id, mime_type)
+                print(f"[get_documents_by_ids] Content length: {len(content) if content else 0}")
 
                 if content and content.strip():
                     documents.append({
@@ -206,9 +209,14 @@ class DriveService:
                         'content': content,
                         'modified_time': file_meta.get('modifiedTime', '')
                     })
+                    print(f"[get_documents_by_ids] Document added successfully")
 
             except HttpError as error:
-                print(f"Error fetching file {file_id}: {error}")
+                print(f"[get_documents_by_ids] HttpError for {file_id}: {error}")
+                continue
+            except Exception as e:
+                import traceback
+                print(f"[get_documents_by_ids] ERROR for {file_id}: {e}\n{traceback.format_exc()}")
                 continue
 
         return documents
@@ -375,14 +383,19 @@ class DriveService:
     def _parse_docx(self, file_content: io.BytesIO) -> str:
         """Extract text from DOCX file"""
         try:
+            print("  -> DOCX: Loading document...")
             doc = DocxDocument(file_content)
+            print(f"  -> DOCX: Found {len(doc.paragraphs)} paragraphs")
             text_parts = []
             for paragraph in doc.paragraphs:
                 if paragraph.text.strip():
                     text_parts.append(paragraph.text)
-            return "\n\n".join(text_parts)
+            result = "\n\n".join(text_parts)
+            print(f"  -> DOCX: Extracted {len(result)} characters")
+            return result
         except Exception as e:
-            print(f"Error parsing DOCX: {e}")
+            import traceback
+            print(f"ERROR parsing DOCX: {e}\n{traceback.format_exc()}")
             return ""
 
     def _parse_xlsx(self, file_content: io.BytesIO) -> str:

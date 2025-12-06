@@ -208,20 +208,29 @@ def browse_folder():
 @app.route('/add-documents', methods=['POST'])
 def add_documents():
     """Add documents to existing index without clearing"""
+    print("=== ADD DOCUMENTS START ===")
+
     if not is_authenticated():
+        print("ERROR: Not authenticated")
         return jsonify({'error': 'Not authenticated'}), 401
 
     try:
+        print("Step 1: Getting credentials...")
         credentials = get_valid_credentials()
         if not credentials:
+            print("ERROR: Invalid credentials")
             return jsonify({'error': 'Invalid credentials'}), 401
 
+        print("Step 2: Parsing request data...")
         data = request.json or {}
         items = data.get('items', [])  # List of {id, type, name}
+        print(f"Items received: {len(items)}")
 
         if not items:
+            print("ERROR: No items selected")
             return jsonify({'error': 'No items selected'}), 400
 
+        print("Step 3: Creating DriveService...")
         drive_service = DriveService(credentials)
         all_documents = []
 
@@ -235,17 +244,26 @@ def add_documents():
             else:
                 file_ids.append(item['id'])
 
+        print(f"Step 4: Processing {len(file_ids)} files and {len(folder_ids)} folders...")
+
         # Get documents from individual files
         if file_ids:
+            print(f"Step 4a: Fetching {len(file_ids)} individual files...")
             docs = drive_service.get_documents_by_ids(file_ids)
+            print(f"Got {len(docs)} documents from files")
             all_documents.extend(docs)
 
         # Get documents from folders (recursive)
         for folder_id in folder_ids:
+            print(f"Step 4b: Fetching documents from folder {folder_id}...")
             docs = drive_service.get_all_documents(folder_id=folder_id)
+            print(f"Got {len(docs)} documents from folder")
             all_documents.extend(docs)
 
+        print(f"Step 5: Total documents to index: {len(all_documents)}")
+
         if not all_documents:
+            print("WARNING: No documents found")
             return jsonify({
                 'status': 'warning',
                 'message': 'No documents found in selected items',
@@ -253,8 +271,12 @@ def add_documents():
             })
 
         # Add to existing index (don't clear)
+        print("Step 6: Getting RAG engine...")
         rag = get_rag_engine()
+
+        print("Step 7: Adding documents to index...")
         result = rag.add_documents(all_documents)
+        print(f"Step 8: Done! Result: {result}")
 
         return jsonify({
             'status': 'success',
@@ -265,7 +287,7 @@ def add_documents():
 
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"Add documents error: {e}\n{error_trace}")
+        print(f"=== ADD DOCUMENTS ERROR ===\n{error_trace}")
         return jsonify({
             'error': str(e),
             'error_type': type(e).__name__,
