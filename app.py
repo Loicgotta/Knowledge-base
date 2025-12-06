@@ -4,6 +4,7 @@ Main Flask application for Google Drive document Q&A
 """
 
 import os
+import sys
 import secrets
 import traceback
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
@@ -208,29 +209,29 @@ def browse_folder():
 @app.route('/add-documents', methods=['POST'])
 def add_documents():
     """Add documents to existing index without clearing"""
-    print("=== ADD DOCUMENTS START ===")
+    print("=== ADD DOCUMENTS START ===", flush=True)
 
     if not is_authenticated():
-        print("ERROR: Not authenticated")
+        print("ERROR: Not authenticated", flush=True)
         return jsonify({'error': 'Not authenticated'}), 401
 
     try:
-        print("Step 1: Getting credentials...")
+        print("Step 1: Getting credentials...", flush=True)
         credentials = get_valid_credentials()
         if not credentials:
-            print("ERROR: Invalid credentials")
+            print("ERROR: Invalid credentials", flush=True)
             return jsonify({'error': 'Invalid credentials'}), 401
 
-        print("Step 2: Parsing request data...")
+        print("Step 2: Parsing request data...", flush=True)
         data = request.json or {}
         items = data.get('items', [])  # List of {id, type, name}
-        print(f"Items received: {len(items)}")
+        print(f"Items received: {len(items)}", flush=True)
 
         if not items:
-            print("ERROR: No items selected")
+            print("ERROR: No items selected", flush=True)
             return jsonify({'error': 'No items selected'}), 400
 
-        print("Step 3: Creating DriveService...")
+        print("Step 3: Creating DriveService...", flush=True)
         drive_service = DriveService(credentials)
         all_documents = []
 
@@ -244,26 +245,26 @@ def add_documents():
             else:
                 file_ids.append(item['id'])
 
-        print(f"Step 4: Processing {len(file_ids)} files and {len(folder_ids)} folders...")
+        print(f"Step 4: Processing {len(file_ids)} files and {len(folder_ids)} folders...", flush=True)
 
         # Get documents from individual files
         if file_ids:
-            print(f"Step 4a: Fetching {len(file_ids)} individual files...")
+            print(f"Step 4a: Fetching {len(file_ids)} individual files...", flush=True)
             docs = drive_service.get_documents_by_ids(file_ids)
-            print(f"Got {len(docs)} documents from files")
+            print(f"Got {len(docs)} documents from files", flush=True)
             all_documents.extend(docs)
 
         # Get documents from folders (recursive)
         for folder_id in folder_ids:
-            print(f"Step 4b: Fetching documents from folder {folder_id}...")
+            print(f"Step 4b: Fetching documents from folder {folder_id}...", flush=True)
             docs = drive_service.get_all_documents(folder_id=folder_id)
-            print(f"Got {len(docs)} documents from folder")
+            print(f"Got {len(docs)} documents from folder", flush=True)
             all_documents.extend(docs)
 
-        print(f"Step 5: Total documents to index: {len(all_documents)}")
+        print(f"Step 5: Total documents to index: {len(all_documents)}", flush=True)
 
         if not all_documents:
-            print("WARNING: No documents found")
+            print("WARNING: No documents found", flush=True)
             return jsonify({
                 'status': 'warning',
                 'message': 'No documents found in selected items',
@@ -271,12 +272,12 @@ def add_documents():
             })
 
         # Add to existing index (don't clear)
-        print("Step 6: Getting RAG engine...")
+        print("Step 6: Getting RAG engine...", flush=True)
         rag = get_rag_engine()
 
-        print("Step 7: Adding documents to index...")
+        print("Step 7: Adding documents to index...", flush=True)
         result = rag.add_documents(all_documents)
-        print(f"Step 8: Done! Result: {result}")
+        print(f"Step 8: Done! Result: {result}", flush=True)
 
         return jsonify({
             'status': 'success',
