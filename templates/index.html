@@ -624,6 +624,22 @@
                     body: JSON.stringify({ items })
                 });
 
+                // Verifier si c'est un timeout (502)
+                if (response.status === 502) {
+                    throw new Error(`TIMEOUT SERVEUR (HTTP 502)
+
+Le serveur a mis trop de temps a repondre.
+Le plan gratuit de Render a une limite de 30 secondes.
+
+SOLUTIONS:
+1. Essayez avec un document plus petit
+2. Passez au plan Render Starter ($7/mois) pour enlever la limite
+3. Utilisez Railway.app ou Fly.io (plans gratuits plus genereux)
+
+Le document etait peut-etre en cours de traitement.
+Verifiez les logs Render pour plus de details.`);
+                }
+
                 // Lire la reponse brute d'abord
                 const responseText = await response.text();
                 let data;
