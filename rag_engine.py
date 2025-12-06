@@ -116,18 +116,28 @@ class RAGEngine:
         # Process in batches to avoid API limits
         batch_size = 100
         all_embeddings = []
+        total_batches = (len(texts) + batch_size - 1) // batch_size
+
+        print(f"[_get_embeddings] Starting: {len(texts)} texts in {total_batches} batches")
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
+            batch_num = i // batch_size + 1
+            print(f"[_get_embeddings] Processing batch {batch_num}/{total_batches} ({len(batch)} texts)...")
 
-            response = self.openai_client.embeddings.create(
-                model=self.embedding_model,
-                input=batch
-            )
+            try:
+                response = self.openai_client.embeddings.create(
+                    model=self.embedding_model,
+                    input=batch
+                )
+                batch_embeddings = [item.embedding for item in response.data]
+                all_embeddings.extend(batch_embeddings)
+                print(f"[_get_embeddings] Batch {batch_num} done")
+            except Exception as e:
+                print(f"[_get_embeddings] ERROR in batch {batch_num}: {e}")
+                raise
 
-            batch_embeddings = [item.embedding for item in response.data]
-            all_embeddings.extend(batch_embeddings)
-
+        print(f"[_get_embeddings] All embeddings generated: {len(all_embeddings)}")
         return all_embeddings
 
     def index_documents(self, documents: List[Dict], clear_existing: bool = True) -> Dict:

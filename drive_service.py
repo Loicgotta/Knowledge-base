@@ -300,37 +300,61 @@ class DriveService:
             Text content of the file or None if failed
         """
         try:
+            print(f"[get_file_content] Starting for {file_id}, type: {mime_type}")
             # For Google Workspace documents, export as text
             if mime_type in EXPORT_MIME_TYPES:
-                return self._export_google_doc(file_id, mime_type)
+                print(f"[get_file_content] Using export method (Google Workspace doc)")
+                content = self._export_google_doc(file_id, mime_type)
+                print(f"[get_file_content] Export done, content length: {len(content) if content else 0}")
+                return content
             else:
-                return self._download_and_parse(file_id, mime_type)
+                print(f"[get_file_content] Using download method")
+                content = self._download_and_parse(file_id, mime_type)
+                print(f"[get_file_content] Download done, content length: {len(content) if content else 0}")
+                return content
 
         except HttpError as error:
-            print(f"Error fetching file {file_id}: {error}")
+            import traceback
+            print(f"[get_file_content] HttpError for {file_id}: {error}\n{traceback.format_exc()}")
             return None
         except Exception as e:
-            print(f"Error processing file {file_id}: {e}")
+            import traceback
+            print(f"[get_file_content] ERROR for {file_id}: {e}\n{traceback.format_exc()}")
             return None
 
     def _export_google_doc(self, file_id: str, mime_type: str) -> Optional[str]:
         """Export Google Workspace document to text"""
-        export_mime = EXPORT_MIME_TYPES.get(mime_type, 'text/plain')
+        try:
+            print(f"[_export_google_doc] Starting export for {file_id}")
+            export_mime = EXPORT_MIME_TYPES.get(mime_type, 'text/plain')
+            print(f"[_export_google_doc] Export MIME type: {export_mime}")
 
-        request = self.service.files().export_media(
-            fileId=file_id,
-            mimeType=export_mime
-        )
+            request = self.service.files().export_media(
+                fileId=file_id,
+                mimeType=export_mime
+            )
 
-        file_content = io.BytesIO()
-        downloader = MediaIoBaseDownload(file_content, request)
+            file_content = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_content, request)
 
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
+            print(f"[_export_google_doc] Starting download chunks...")
+            done = False
+            chunk_num = 0
+            while not done:
+                status, done = downloader.next_chunk()
+                chunk_num += 1
+                if status:
+                    print(f"[_export_google_doc] Chunk {chunk_num}: {int(status.progress() * 100)}%")
 
-        content = file_content.getvalue().decode('utf-8', errors='ignore')
-        return content
+            print(f"[_export_google_doc] Download complete, decoding...")
+            content = file_content.getvalue().decode('utf-8', errors='ignore')
+            print(f"[_export_google_doc] Done! Content length: {len(content)}")
+            return content
+
+        except Exception as e:
+            import traceback
+            print(f"[_export_google_doc] ERROR: {e}\n{traceback.format_exc()}")
+            return ""
 
     def _download_and_parse(self, file_id: str, mime_type: str) -> Optional[str]:
         """Download and parse a file based on its MIME type"""
