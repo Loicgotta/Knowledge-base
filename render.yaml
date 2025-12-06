@@ -11,8 +11,8 @@ services:
     # Build settings
     buildCommand: pip install -r requirements.txt
 
-    # Start command
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    # Start command (timeout 600s = 10 minutes for large document processing)
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 600
 
     # Health check
     healthCheckPath: /health
