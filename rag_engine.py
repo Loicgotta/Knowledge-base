@@ -39,7 +39,7 @@ class RAGEngine:
         self.chunk_size = 500  # tokens
         self.chunk_overlap = 50  # tokens
         self.embedding_model = "text-embedding-3-small"
-        self.chat_model = "gpt-4o-mini"
+        self.chat_model = "gpt-4.1-mini"
         self.max_context_chunks = 10  # Increased to get more diverse sources
 
     def _init_chroma(self):
