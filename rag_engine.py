@@ -40,7 +40,7 @@ class RAGEngine:
         self.chunk_overlap = 50  # tokens
         self.embedding_model = "text-embedding-3-small"
         self.chat_model = "gpt-4o-mini"
-        self.max_context_chunks = 5
+        self.max_context_chunks = 10  # Increased to get more diverse sources
 
     def _init_chroma(self):
         """Initialize or reinitialize ChromaDB connection"""
@@ -325,8 +325,13 @@ class RAGEngine:
         Returns:
             Response with answer and sources
         """
+        print(f"[ask] Question: {question[:100]}...", flush=True)
+        print(f"[ask] Total chunks in collection: {self.collection.count()}", flush=True)
+
         # Search for relevant context
         relevant_chunks = self.search(question, n_results=self.max_context_chunks)
+
+        print(f"[ask] Found {len(relevant_chunks)} relevant chunks", flush=True)
 
         if not relevant_chunks:
             return {
@@ -339,10 +344,13 @@ class RAGEngine:
         context_parts = []
         sources = set()
 
-        for chunk in relevant_chunks:
+        for i, chunk in enumerate(relevant_chunks):
             context_parts.append(chunk['content'])
-            if chunk['metadata'].get('doc_name'):
-                sources.add(chunk['metadata']['doc_name'])
+            doc_name = chunk['metadata'].get('doc_name', 'Unknown')
+            sources.add(doc_name)
+            print(f"[ask] Chunk {i+1}: {doc_name} (distance: {chunk.get('distance', 'N/A')})", flush=True)
+
+        print(f"[ask] Sources used: {list(sources)}", flush=True)
 
         context = "\n\n---\n\n".join(context_parts)
 
