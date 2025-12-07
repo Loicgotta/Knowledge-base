@@ -624,27 +624,9 @@
                     body: JSON.stringify({ items })
                 });
 
-                // Verifier si c'est un timeout ou crash memoire (502)
+                // Verifier si c'est une erreur 502
                 if (response.status === 502) {
-                    throw new Error(`ERREUR SERVEUR (HTTP 502)
-
-Le serveur a plante. Causes possibles:
-
-1. MEMOIRE INSUFFISANTE (512 MB sur Render Free)
-   → Le document est trop volumineux
-   → Solution: Essayez un document plus petit
-
-2. TIMEOUT (30 secondes sur Render Free)
-   → Le traitement prend trop de temps
-   → Solution: Document plus petit ou plan payant
-
-VERIFIEZ LES LOGS RENDER pour voir la vraie cause:
-- "SIGKILL" ou "out of memory" = Memoire
-- Logs qui s'arretent brutalement = Timeout
-
-SOLUTIONS:
-- Render Starter ($7/mois) = Plus de RAM + pas de timeout
-- Railway.app ou Fly.io = Plans gratuits plus genereux`);
+                    throw new Error(`Erreur serveur (HTTP 502). Le serveur n'a pas pu traiter la demande. Verifiez les logs Render pour plus de details.`);
                 }
 
                 // Lire la reponse brute d'abord

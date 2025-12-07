@@ -41,7 +41,6 @@ class RAGEngine:
         self.embedding_model = "text-embedding-3-small"
         self.chat_model = "gpt-4o-mini"
         self.max_context_chunks = 5
-        self.embedding_batch_size = 20  # Reduced for memory
 
     def _init_chroma(self):
         """Initialize or reinitialize ChromaDB connection"""
@@ -114,42 +113,27 @@ class RAGEngine:
         Returns:
             List of embedding vectors
         """
-        import gc
-
-        # Use smaller batches to save memory
-        batch_size = self.embedding_batch_size
+        # Process in batches to avoid API limits
+        batch_size = 100
         all_embeddings = []
-        total_batches = (len(texts) + batch_size - 1) // batch_size
 
-        print(f"[_get_embeddings] Starting: {len(texts)} texts in {total_batches} batches (batch_size={batch_size})", flush=True)
+        print(f"[_get_embeddings] Getting embeddings for {len(texts)} texts...", flush=True)
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
-            batch_num = i // batch_size + 1
-            print(f"[_get_embeddings] Batch {batch_num}/{total_batches}...", flush=True)
-
-            try:
-                response = self.openai_client.embeddings.create(
-                    model=self.embedding_model,
-                    input=batch
-                )
-                batch_embeddings = [item.embedding for item in response.data]
-                all_embeddings.extend(batch_embeddings)
-
-                # Free memory
-                del response
-                gc.collect()
-
-            except Exception as e:
-                print(f"[_get_embeddings] ERROR in batch {batch_num}: {e}", flush=True)
-                raise
+            response = self.openai_client.embeddings.create(
+                model=self.embedding_model,
+                input=batch
+            )
+            batch_embeddings = [item.embedding for item in response.data]
+            all_embeddings.extend(batch_embeddings)
 
         print(f"[_get_embeddings] Done: {len(all_embeddings)} embeddings", flush=True)
         return all_embeddings
 
     def index_documents(self, documents: List[Dict], clear_existing: bool = True) -> Dict:
         """
-        Index documents into the vector store - MEMORY OPTIMIZED
+        Index documents into the vector store
 
         Args:
             documents: List of documents with 'name' and 'content' keys
@@ -158,8 +142,6 @@ class RAGEngine:
         Returns:
             Indexing statistics
         """
-        import gc
-
         # Ensure connection is valid before starting
         self._ensure_connection()
         print(f"[index_documents] Processing {len(documents)} documents...", flush=True)
@@ -183,72 +165,57 @@ class RAGEngine:
                 metadata={"hnsw:space": "cosine"}
             )
 
-        total_chunks = 0
-        docs_processed = 0
-
-        # Process ONE document at a time to save memory
-        for doc_idx, doc in enumerate(documents):
+        # Split all documents into chunks
+        all_chunks = []
+        for doc in documents:
             doc_name = doc['name']
             content = doc['content']
             doc_id = doc.get('id', hashlib.md5(doc_name.encode()).hexdigest())
 
-            print(f"[index_documents] Doc {doc_idx+1}/{len(documents)}: {doc_name}", flush=True)
-
-            # Split document into chunks
             chunks = self._split_text(content, doc_name)
-
-            if not chunks:
-                continue
-
-            chunk_texts = []
-            chunk_ids = []
-            chunk_metadatas = []
-
             for chunk in chunks:
-                chunk_id = f"{doc_id}_{chunk['chunk_index']}"
-                chunk_texts.append(chunk['text'])
-                chunk_ids.append(chunk_id)
-                chunk_metadatas.append({
-                    'doc_name': chunk['doc_name'],
-                    'doc_id': doc_id,
-                    'chunk_index': chunk['chunk_index']
-                })
+                chunk['doc_id'] = doc_id
+            all_chunks.extend(chunks)
 
-            # Get embeddings for this document's chunks
-            print(f"[index_documents] Generating {len(chunk_texts)} embeddings...", flush=True)
-            embeddings = self._get_embeddings(chunk_texts)
+        print(f"[index_documents] Created {len(all_chunks)} chunks", flush=True)
 
-            # Upsert this document's chunks
-            try:
-                self.collection.upsert(
-                    ids=chunk_ids,
-                    embeddings=embeddings,
-                    documents=chunk_texts,
-                    metadatas=chunk_metadatas
-                )
-                total_chunks += len(chunk_texts)
-                docs_processed += 1
-            except Exception as e:
-                print(f"[index_documents] Error upserting {doc_name}: {e}", flush=True)
-                # Try to reinitialize and continue
-                self._init_chroma()
-                self.collection = self.chroma_client.get_or_create_collection(
-                    name=self.collection_name,
-                    metadata={"hnsw:space": "cosine"}
-                )
-
-            # FREE MEMORY after each document
-            del chunks, chunk_texts, chunk_ids, chunk_metadatas, embeddings, content
-            gc.collect()
-            print(f"[index_documents] Memory freed, total chunks so far: {total_chunks}", flush=True)
-
-        if total_chunks == 0:
+        if not all_chunks:
             return {'status': 'empty', 'chunks_indexed': 0}
+
+        # Prepare data for ChromaDB
+        chunk_texts = []
+        chunk_ids = []
+        chunk_metadatas = []
+
+        for chunk in all_chunks:
+            chunk_id = f"{chunk['doc_id']}_{chunk['chunk_index']}"
+            chunk_texts.append(chunk['text'])
+            chunk_ids.append(chunk_id)
+            chunk_metadatas.append({
+                'doc_name': chunk['doc_name'],
+                'doc_id': chunk['doc_id'],
+                'chunk_index': chunk['chunk_index']
+            })
+
+        # Get embeddings
+        print(f"[index_documents] Generating embeddings...", flush=True)
+        embeddings = self._get_embeddings(chunk_texts)
+
+        # Upsert to collection
+        print(f"[index_documents] Upserting to ChromaDB...", flush=True)
+        self.collection.upsert(
+            ids=chunk_ids,
+            embeddings=embeddings,
+            documents=chunk_texts,
+            metadatas=chunk_metadatas
+        )
+
+        print(f"[index_documents] Done! Indexed {len(all_chunks)} chunks", flush=True)
 
         return {
             'status': 'success',
-            'documents_processed': docs_processed,
-            'chunks_indexed': total_chunks
+            'documents_processed': len(documents),
+            'chunks_indexed': len(all_chunks)
         }
 
     def add_documents(self, documents: List[Dict]) -> Dict:
