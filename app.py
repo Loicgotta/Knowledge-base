@@ -279,11 +279,13 @@ def add_documents():
         result = rag.add_documents(all_documents)
         print(f"Step 8: Done! Result: {result}", flush=True)
 
+        total_chunks = result.get('total_chunks', result['chunks_indexed'])
         return jsonify({
             'status': 'success',
-            'message': f"Added {result['chunks_indexed']} chunks from {result['documents_processed']} documents",
+            'message': f"Ajoute {result['chunks_indexed']} chunks de {result['documents_processed']} document(s). Total: {total_chunks} chunks",
             'documents_processed': result['documents_processed'],
-            'chunks_indexed': result['chunks_indexed']
+            'chunks_indexed': result['chunks_indexed'],
+            'total_chunks': total_chunks
         })
 
     except Exception as e:

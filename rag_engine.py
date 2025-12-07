@@ -144,12 +144,18 @@ class RAGEngine:
         """
         # Ensure connection is valid before starting
         self._ensure_connection()
-        print(f"[index_documents] Processing {len(documents)} documents...", flush=True)
 
-        # Reinitialize ChromaDB to ensure fresh connection
-        self._init_chroma()
+        # Get current count before any changes
+        try:
+            current_count = self.collection.count()
+        except:
+            current_count = 0
+
+        print(f"[index_documents] Processing {len(documents)} documents (clear_existing={clear_existing})...", flush=True)
+        print(f"[index_documents] Current chunks in collection: {current_count}", flush=True)
 
         if clear_existing:
+            print("[index_documents] CLEARING existing collection...", flush=True)
             # Clear existing collection for fresh index
             try:
                 self.chroma_client.delete_collection(self.collection_name)
@@ -160,6 +166,8 @@ class RAGEngine:
                 metadata={"hnsw:space": "cosine"}
             )
         else:
+            print("[index_documents] KEEPING existing collection (accumulating documents)...", flush=True)
+            # Just ensure we have the collection, don't clear it
             self.collection = self.chroma_client.get_or_create_collection(
                 name=self.collection_name,
                 metadata={"hnsw:space": "cosine"}
@@ -210,12 +218,15 @@ class RAGEngine:
             metadatas=chunk_metadatas
         )
 
-        print(f"[index_documents] Done! Indexed {len(all_chunks)} chunks", flush=True)
+        # Get new total count
+        new_total = self.collection.count()
+        print(f"[index_documents] Done! Added {len(all_chunks)} chunks. Total in collection: {new_total}", flush=True)
 
         return {
             'status': 'success',
             'documents_processed': len(documents),
-            'chunks_indexed': len(all_chunks)
+            'chunks_indexed': len(all_chunks),
+            'total_chunks': new_total
         }
 
     def add_documents(self, documents: List[Dict]) -> Dict:
