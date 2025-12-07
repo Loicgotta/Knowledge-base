@@ -467,6 +467,165 @@ def health():
     return jsonify({'status': 'healthy'})
 
 
+# ============== Document Modification Endpoints ==============
+
+@app.route('/modify-document', methods=['POST'])
+def modify_document():
+    """Modify a Google Doc content"""
+    print("=== MODIFY DOCUMENT START ===", flush=True)
+
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        data = request.json or {}
+        file_id = data.get('file_id')
+        new_content = data.get('content')
+        action = data.get('action', 'replace')  # 'replace' or 'append'
+
+        if not file_id:
+            return jsonify({'error': 'file_id is required'}), 400
+
+        if new_content is None:
+            return jsonify({'error': 'content is required'}), 400
+
+        print(f"[modify-document] Action: {action}, File ID: {file_id}", flush=True)
+        print(f"[modify-document] Content length: {len(new_content)}", flush=True)
+
+        drive_service = DriveService(credentials)
+
+        # Get file metadata to check type
+        file_meta = drive_service.get_file_metadata(file_id)
+        if not file_meta:
+            return jsonify({'error': 'File not found'}), 404
+
+        mime_type = file_meta.get('mimeType', '')
+        file_name = file_meta.get('name', 'Unknown')
+        print(f"[modify-document] File: {file_name}, Type: {mime_type}", flush=True)
+
+        # Only support Google Docs for now
+        if mime_type != 'application/vnd.google-apps.document':
+            return jsonify({
+                'error': f'Only Google Docs are supported for modification. File type: {mime_type}'
+            }), 400
+
+        # Perform the modification
+        if action == 'append':
+            result = drive_service.append_to_google_doc(file_id, new_content)
+        else:
+            result = drive_service.update_google_doc(file_id, new_content)
+
+        if result['status'] == 'success':
+            print(f"[modify-document] Success!", flush=True)
+            return jsonify({
+                'status': 'success',
+                'message': f'Document "{file_name}" modified successfully',
+                'file_id': file_id,
+                'file_name': file_name
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"=== MODIFY DOCUMENT ERROR ===\n{error_trace}", flush=True)
+        return jsonify({
+            'error': str(e),
+            'traceback': error_trace
+        }), 500
+
+
+@app.route('/create-document', methods=['POST'])
+def create_document():
+    """Create a new Google Doc"""
+    print("=== CREATE DOCUMENT START ===", flush=True)
+
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        data = request.json or {}
+        title = data.get('title')
+        content = data.get('content', '')
+
+        if not title:
+            return jsonify({'error': 'title is required'}), 400
+
+        print(f"[create-document] Title: {title}", flush=True)
+
+        drive_service = DriveService(credentials)
+        result = drive_service.create_google_doc(title, content)
+
+        if result['status'] == 'success':
+            print(f"[create-document] Success! File ID: {result['file_id']}", flush=True)
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"=== CREATE DOCUMENT ERROR ===\n{error_trace}", flush=True)
+        return jsonify({
+            'error': str(e),
+            'traceback': error_trace
+        }), 500
+
+
+@app.route('/list-editable-documents')
+def list_editable_documents():
+    """List Google Docs that can be edited"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        drive_service = DriveService(credentials)
+
+        # List only Google Docs (editable)
+        all_files = []
+        page_token = None
+
+        while True:
+            results = drive_service.service.files().list(
+                pageSize=100,
+                fields="nextPageToken, files(id, name, mimeType, modifiedTime, webViewLink)",
+                q="mimeType='application/vnd.google-apps.document' and trashed=false",
+                orderBy="modifiedTime desc",
+                pageToken=page_token
+            ).execute()
+
+            files = results.get('files', [])
+            all_files.extend(files)
+
+            page_token = results.get('nextPageToken')
+            if not page_token:
+                break
+
+        return jsonify({
+            'status': 'success',
+            'documents': all_files,
+            'count': len(all_files)
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[list-editable-documents] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
 # ============== Error Handlers ==============
 
 @app.errorhandler(404)

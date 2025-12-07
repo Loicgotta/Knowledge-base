@@ -589,3 +589,205 @@ class DriveService:
         except HttpError as error:
             print(f"Error getting user info: {error}")
             return {}
+
+    def update_google_doc(self, file_id: str, new_content: str) -> Dict:
+        """
+        Update a Google Doc with new content (replaces entire content)
+
+        Args:
+            file_id: The ID of the Google Doc
+            new_content: The new text content
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Build Google Docs API service
+            docs_service = build('docs', 'v1', credentials=self.credentials)
+
+            # First, get the document to find its content length
+            doc = docs_service.documents().get(documentId=file_id).execute()
+
+            # Get the end index of the document content
+            content = doc.get('body', {}).get('content', [])
+            end_index = 1
+            for element in content:
+                if 'endIndex' in element:
+                    end_index = max(end_index, element['endIndex'])
+
+            # Prepare requests to clear and insert new content
+            requests = []
+
+            # Delete existing content (if any beyond the initial newline)
+            if end_index > 2:
+                requests.append({
+                    'deleteContentRange': {
+                        'range': {
+                            'startIndex': 1,
+                            'endIndex': end_index - 1
+                        }
+                    }
+                })
+
+            # Insert new content at the beginning
+            if new_content:
+                requests.append({
+                    'insertText': {
+                        'location': {
+                            'index': 1
+                        },
+                        'text': new_content
+                    }
+                })
+
+            # Execute the batch update
+            if requests:
+                docs_service.documents().batchUpdate(
+                    documentId=file_id,
+                    body={'requests': requests}
+                ).execute()
+
+            print(f"[update_google_doc] Successfully updated document {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': 'Document updated successfully',
+                'file_id': file_id
+            }
+
+        except HttpError as error:
+            print(f"[update_google_doc] HttpError: {error}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(error),
+                'file_id': file_id
+            }
+        except Exception as e:
+            import traceback
+            print(f"[update_google_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e),
+                'file_id': file_id
+            }
+
+    def append_to_google_doc(self, file_id: str, content_to_append: str) -> Dict:
+        """
+        Append content to the end of a Google Doc
+
+        Args:
+            file_id: The ID of the Google Doc
+            content_to_append: The text to append
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            docs_service = build('docs', 'v1', credentials=self.credentials)
+
+            # Get current document end index
+            doc = docs_service.documents().get(documentId=file_id).execute()
+            content = doc.get('body', {}).get('content', [])
+            end_index = 1
+            for element in content:
+                if 'endIndex' in element:
+                    end_index = max(end_index, element['endIndex'])
+
+            # Insert at the end (before the final newline)
+            insert_index = max(1, end_index - 1)
+
+            requests = [{
+                'insertText': {
+                    'location': {
+                        'index': insert_index
+                    },
+                    'text': '\n' + content_to_append
+                }
+            }]
+
+            docs_service.documents().batchUpdate(
+                documentId=file_id,
+                body={'requests': requests}
+            ).execute()
+
+            print(f"[append_to_google_doc] Successfully appended to document {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': 'Content appended successfully',
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[append_to_google_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e),
+                'file_id': file_id
+            }
+
+    def create_google_doc(self, title: str, content: str = "") -> Dict:
+        """
+        Create a new Google Doc
+
+        Args:
+            title: The title of the new document
+            content: Optional initial content
+
+        Returns:
+            Result dictionary with file_id and status
+        """
+        try:
+            docs_service = build('docs', 'v1', credentials=self.credentials)
+
+            # Create empty document
+            doc = docs_service.documents().create(body={'title': title}).execute()
+            file_id = doc.get('documentId')
+
+            # Add content if provided
+            if content:
+                requests = [{
+                    'insertText': {
+                        'location': {'index': 1},
+                        'text': content
+                    }
+                }]
+                docs_service.documents().batchUpdate(
+                    documentId=file_id,
+                    body={'requests': requests}
+                ).execute()
+
+            print(f"[create_google_doc] Created document: {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Document "{title}" created successfully',
+                'file_id': file_id,
+                'title': title
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[create_google_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e)
+            }
+
+    def get_file_metadata(self, file_id: str) -> Dict:
+        """
+        Get metadata for a file
+
+        Args:
+            file_id: The file ID
+
+        Returns:
+            File metadata dictionary
+        """
+        try:
+            file_meta = self.service.files().get(
+                fileId=file_id,
+                fields="id, name, mimeType, modifiedTime, webViewLink"
+            ).execute()
+            return file_meta
+        except HttpError as error:
+            print(f"[get_file_metadata] Error: {error}", flush=True)
+            return {}
