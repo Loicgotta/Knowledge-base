@@ -373,7 +373,7 @@ def sync_drive():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Chat endpoint for Q&A"""
+    """Chat endpoint for Q&A with document modification capability"""
     if not is_authenticated():
         return jsonify({'error': 'Not authenticated'}), 401
 
@@ -386,6 +386,22 @@ def chat():
 
     try:
         rag = get_rag_engine()
+        credentials = get_valid_credentials()
+
+        # Get list of editable documents for the agent
+        editable_docs = []
+        if credentials:
+            try:
+                drive_service = DriveService(credentials)
+                results = drive_service.service.files().list(
+                    pageSize=50,
+                    fields="files(id, name)",
+                    q="mimeType='application/vnd.google-apps.document' and trashed=false",
+                    orderBy="modifiedTime desc"
+                ).execute()
+                editable_docs = results.get('files', [])
+            except Exception as e:
+                print(f"[chat] Error fetching editable docs: {e}", flush=True)
 
         # Check if documents are indexed
         stats = rag.get_stats()
@@ -396,13 +412,26 @@ def chat():
                 'needs_sync': True
             })
 
-        # Get answer using RAG
-        result = rag.ask(message, history)
+        # Get answer using RAG (with editable docs info)
+        result = rag.ask(message, history, editable_docs=editable_docs)
+
+        # Check if the agent wants to modify a document
+        answer = result['answer']
+        modification_result = None
+
+        if '[MODIFY_DOC:' in answer:
+            modification_result = execute_agent_modification(answer, credentials)
+            # Clean the answer by removing the command
+            import re
+            answer = re.sub(r'\[MODIFY_DOC:.*?\]', '', answer).strip()
+            if modification_result and modification_result.get('status') == 'success':
+                answer += f"\n\n✅ **Document modifié avec succès:** {modification_result.get('file_name', 'Document')}"
 
         return jsonify({
-            'answer': result['answer'],
+            'answer': answer,
             'sources': result['sources'],
-            'chunks_used': result.get('chunks_used', 0)
+            'chunks_used': result.get('chunks_used', 0),
+            'modification': modification_result
         })
 
     except Exception as e:
@@ -413,6 +442,52 @@ def chat():
             'error_type': type(e).__name__,
             'traceback': error_trace
         }), 500
+
+
+def execute_agent_modification(answer: str, credentials) -> dict:
+    """Execute document modification requested by the agent"""
+    import re
+    import json
+
+    try:
+        # Parse the modification command: [MODIFY_DOC:{"file_id":"...", "action":"...", "content":"..."}]
+        match = re.search(r'\[MODIFY_DOC:(.*?)\]', answer, re.DOTALL)
+        if not match:
+            return None
+
+        command_str = match.group(1)
+        command = json.loads(command_str)
+
+        file_id = command.get('file_id')
+        action = command.get('action', 'append')  # 'replace' or 'append'
+        content = command.get('content', '')
+
+        if not file_id or not content:
+            print(f"[execute_agent_modification] Missing file_id or content", flush=True)
+            return {'status': 'error', 'message': 'Missing file_id or content'}
+
+        print(f"[execute_agent_modification] Action: {action}, File: {file_id}", flush=True)
+
+        drive_service = DriveService(credentials)
+
+        # Get file name for response
+        file_meta = drive_service.get_file_metadata(file_id)
+        file_name = file_meta.get('name', 'Document')
+
+        if action == 'replace':
+            result = drive_service.update_google_doc(file_id, content)
+        else:
+            result = drive_service.append_to_google_doc(file_id, content)
+
+        result['file_name'] = file_name
+        return result
+
+    except json.JSONDecodeError as e:
+        print(f"[execute_agent_modification] JSON parse error: {e}", flush=True)
+        return {'status': 'error', 'message': f'Invalid command format: {e}'}
+    except Exception as e:
+        print(f"[execute_agent_modification] Error: {e}", flush=True)
+        return {'status': 'error', 'message': str(e)}
 
 
 @app.route('/stats')

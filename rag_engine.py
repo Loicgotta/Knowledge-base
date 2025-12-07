@@ -338,19 +338,21 @@ class RAGEngine:
 
         return diversified
 
-    def ask(self, question: str, conversation_history: List[Dict] = None) -> Dict:
+    def ask(self, question: str, conversation_history: List[Dict] = None, editable_docs: List[Dict] = None) -> Dict:
         """
-        Answer a question using RAG
+        Answer a question using RAG, with ability to modify documents
 
         Args:
             question: The user's question
             conversation_history: Optional list of previous messages
+            editable_docs: Optional list of Google Docs that can be modified
 
         Returns:
             Response with answer and sources
         """
         print(f"[ask] Question: {question[:100]}...", flush=True)
         print(f"[ask] Total chunks in collection: {self.collection.count()}", flush=True)
+        print(f"[ask] Editable docs available: {len(editable_docs) if editable_docs else 0}", flush=True)
 
         # Search for MORE chunks than needed, then diversify
         search_multiplier = 3  # Get 3x more chunks to ensure diversity
@@ -387,8 +389,27 @@ class RAGEngine:
 
         context = "\n\n---\n\n".join(context_parts)
 
+        # Build editable docs list for the prompt
+        editable_docs_info = ""
+        if editable_docs:
+            docs_list = "\n".join([f"- {doc['name']} (ID: {doc['id']})" for doc in editable_docs[:20]])
+            editable_docs_info = f"""
+
+=== DOCUMENTS GOOGLE DOCS MODIFIABLES ===
+{docs_list}
+
+Pour modifier un document, utilise ce format à la fin de ta réponse:
+[MODIFY_DOC:{{"file_id":"ID_DU_DOCUMENT", "action":"append", "content":"CONTENU_A_AJOUTER"}}]
+
+Actions disponibles:
+- "append": Ajouter du contenu à la fin du document
+- "replace": Remplacer tout le contenu du document
+
+IMPORTANT: Utilise cette commande SEULEMENT si l'utilisateur demande explicitement de modifier, ajouter, écrire ou mettre à jour un document.
+"""
+
         # Build messages for chat
-        system_message = """Tu es un assistant IA expert qui répond aux questions en te basant sur les documents fournis.
+        system_message = f"""Tu es un assistant IA expert qui répond aux questions en te basant sur les documents fournis.
 
 Instructions:
 - Réponds en te basant UNIQUEMENT sur le contexte fourni
@@ -396,7 +417,8 @@ Instructions:
 - Cite les sources quand c'est pertinent
 - Réponds dans la même langue que la question (français ou anglais)
 - Sois précis et utile
-- Tu peux faire des analyses, comparaisons et synthèses basées sur les documents"""
+- Tu peux faire des analyses, comparaisons et synthèses basées sur les documents
+{editable_docs_info}"""
 
         messages = [{"role": "system", "content": system_message}]
 
