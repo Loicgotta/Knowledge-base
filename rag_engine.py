@@ -392,32 +392,43 @@ class RAGEngine:
         # Build editable docs list for the prompt
         editable_docs_info = ""
         if editable_docs:
-            docs_list = "\n".join([f"- {doc['name']} (ID: {doc['id']})" for doc in editable_docs[:20]])
+            docs_list = "\n".join([f"- \"{doc['name']}\" (ID: {doc['id']})" for doc in editable_docs[:20]])
             editable_docs_info = f"""
 
-=== DOCUMENTS GOOGLE DOCS MODIFIABLES ===
+=== CAPACITÉ DE MODIFICATION DE DOCUMENTS ===
+Tu peux modifier les Google Docs de l'utilisateur quand il te le demande.
+
+Documents disponibles:
 {docs_list}
 
-Pour modifier un document, utilise ce format à la fin de ta réponse:
-[MODIFY_DOC:{{"file_id":"ID_DU_DOCUMENT", "action":"append", "content":"CONTENU_A_AJOUTER"}}]
+Quand l'utilisateur te demande de modifier, ajouter, écrire, mettre à jour, ou créer du contenu dans un document:
+1. Génère le contenu approprié
+2. Ajoute cette commande INVISIBLE à la fin de ta réponse (l'utilisateur ne la verra pas):
+   [MODIFY_DOC:{{"file_id":"ID_DU_DOC", "action":"append", "content":"LE_CONTENU"}}]
 
-Actions disponibles:
-- "append": Ajouter du contenu à la fin du document
-- "replace": Remplacer tout le contenu du document
+Actions:
+- "append" = ajouter à la fin (par défaut, pour ajouter des notes, sections, etc.)
+- "replace" = remplacer tout le contenu (seulement si l'utilisateur demande de tout réécrire)
 
-IMPORTANT: Utilise cette commande SEULEMENT si l'utilisateur demande explicitement de modifier, ajouter, écrire ou mettre à jour un document.
+EXEMPLES:
+- Utilisateur: "Ajoute mes notes de réunion dans le doc Notes"
+  → Tu écris les notes puis ajoutes [MODIFY_DOC:{{"file_id":"xxx", "action":"append", "content":"Notes de réunion..."}}]
+
+- Utilisateur: "Écris un résumé de ce projet dans mon document Rapport"
+  → Tu réponds "Je vais ajouter ce résumé à votre document Rapport" puis la commande
+
+IMPORTANT: Réponds de façon conversationnelle. Dis à l'utilisateur ce que tu vas faire/as fait. La commande [MODIFY_DOC:...] est automatiquement traitée par le système.
 """
 
         # Build messages for chat
-        system_message = f"""Tu es un assistant IA expert qui répond aux questions en te basant sur les documents fournis.
+        system_message = f"""Tu es un assistant IA expert et conversationnel. Tu aides l'utilisateur avec ses documents.
 
-Instructions:
-- Réponds en te basant UNIQUEMENT sur le contexte fourni
+Instructions générales:
+- Réponds de façon naturelle et conversationnelle
+- Base tes réponses sur le contexte des documents fournis
 - Si l'information n'est pas dans le contexte, dis-le clairement
-- Cite les sources quand c'est pertinent
-- Réponds dans la même langue que la question (français ou anglais)
-- Sois précis et utile
-- Tu peux faire des analyses, comparaisons et synthèses basées sur les documents
+- Réponds dans la même langue que la question
+- Tu peux analyser, comparer et synthétiser les documents
 {editable_docs_info}"""
 
         messages = [{"role": "system", "content": system_message}]

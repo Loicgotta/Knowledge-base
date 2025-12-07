@@ -421,11 +421,13 @@ def chat():
 
         if '[MODIFY_DOC:' in answer:
             modification_result = execute_agent_modification(answer, credentials)
-            # Clean the answer by removing the command
+            # Clean the answer by removing the command (handles multiline JSON)
             import re
-            answer = re.sub(r'\[MODIFY_DOC:.*?\]', '', answer).strip()
+            answer = re.sub(r'\[MODIFY_DOC:\{.*?\}\]', '', answer, flags=re.DOTALL).strip()
             if modification_result and modification_result.get('status') == 'success':
-                answer += f"\n\n✅ **Document modifié avec succès:** {modification_result.get('file_name', 'Document')}"
+                answer += f"\n\n✅ Document modifié: **{modification_result.get('file_name', 'Document')}**"
+            elif modification_result and modification_result.get('status') == 'error':
+                answer += f"\n\n❌ Erreur lors de la modification: {modification_result.get('message', 'Erreur inconnue')}"
 
         return jsonify({
             'answer': answer,
@@ -451,11 +453,14 @@ def execute_agent_modification(answer: str, credentials) -> dict:
 
     try:
         # Parse the modification command: [MODIFY_DOC:{"file_id":"...", "action":"...", "content":"..."}]
-        match = re.search(r'\[MODIFY_DOC:(.*?)\]', answer, re.DOTALL)
+        # Use greedy matching for the JSON content
+        match = re.search(r'\[MODIFY_DOC:(\{.*\})\]', answer, re.DOTALL)
         if not match:
+            print(f"[execute_agent_modification] No MODIFY_DOC command found", flush=True)
             return None
 
         command_str = match.group(1)
+        print(f"[execute_agent_modification] Parsing command: {command_str[:200]}...", flush=True)
         command = json.loads(command_str)
 
         file_id = command.get('file_id')
