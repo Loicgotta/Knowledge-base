@@ -314,6 +314,30 @@ class RAGEngine:
 
         return formatted_results
 
+    def _diversify_chunks(self, chunks: List[Dict], max_per_doc: int = 3) -> List[Dict]:
+        """
+        Ensure diversity across documents by limiting chunks per document
+
+        Args:
+            chunks: List of chunks from search
+            max_per_doc: Maximum chunks to keep per document
+
+        Returns:
+            Diversified list of chunks
+        """
+        doc_counts = {}
+        diversified = []
+
+        for chunk in chunks:
+            doc_name = chunk['metadata'].get('doc_name', 'Unknown')
+            current_count = doc_counts.get(doc_name, 0)
+
+            if current_count < max_per_doc:
+                diversified.append(chunk)
+                doc_counts[doc_name] = current_count + 1
+
+        return diversified
+
     def ask(self, question: str, conversation_history: List[Dict] = None) -> Dict:
         """
         Answer a question using RAG
@@ -328,17 +352,26 @@ class RAGEngine:
         print(f"[ask] Question: {question[:100]}...", flush=True)
         print(f"[ask] Total chunks in collection: {self.collection.count()}", flush=True)
 
-        # Search for relevant context
-        relevant_chunks = self.search(question, n_results=self.max_context_chunks)
+        # Search for MORE chunks than needed, then diversify
+        search_multiplier = 3  # Get 3x more chunks to ensure diversity
+        raw_chunks = self.search(question, n_results=self.max_context_chunks * search_multiplier)
 
-        print(f"[ask] Found {len(relevant_chunks)} relevant chunks", flush=True)
+        print(f"[ask] Found {len(raw_chunks)} raw chunks", flush=True)
 
-        if not relevant_chunks:
+        if not raw_chunks:
             return {
                 'answer': "Je n'ai pas trouvé d'informations pertinentes dans vos documents pour répondre à cette question. Assurez-vous que vos documents Drive ont été indexés.",
                 'sources': [],
                 'context_used': False
             }
+
+        # Diversify: limit chunks per document to ensure all docs are represented
+        relevant_chunks = self._diversify_chunks(raw_chunks, max_per_doc=3)
+
+        # Limit to max_context_chunks
+        relevant_chunks = relevant_chunks[:self.max_context_chunks]
+
+        print(f"[ask] After diversification: {len(relevant_chunks)} chunks", flush=True)
 
         # Build context from relevant chunks
         context_parts = []
