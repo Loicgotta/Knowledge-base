@@ -395,65 +395,77 @@ class RAGEngine:
             # Format docs with their types
             def get_doc_type(mime_type):
                 if 'document' in mime_type:
-                    return 'Doc'
+                    return 'Google Doc'
                 elif 'spreadsheet' in mime_type:
-                    return 'Sheet'
+                    return 'Google Sheet'
                 elif 'presentation' in mime_type:
-                    return 'Slides'
+                    return 'Google Slides'
                 return 'Fichier'
 
-            docs_list = "\n".join([f"- \"{doc['name']}\" [{get_doc_type(doc.get('mimeType', ''))}] (ID: {doc['id']})" for doc in editable_docs[:20]])
+            docs_list = "\n".join([f"• {doc['name']} ({get_doc_type(doc.get('mimeType', ''))}) - ID: {doc['id']}" for doc in editable_docs[:20]])
             editable_docs_info = f"""
 
-=== CAPACITÉ DE MODIFICATION DE DOCUMENTS ===
-Tu peux modifier les Google Docs, Sheets et Slides de l'utilisateur quand il te le demande.
+=== TES CAPACITÉS DE MODIFICATION ===
+Tu peux modifier les documents Google de l'utilisateur directement depuis cette conversation.
 
-Documents disponibles:
+Ses documents:
 {docs_list}
 
-Quand l'utilisateur te demande de modifier, ajouter, écrire, mettre à jour du contenu dans un document:
-1. Génère le contenu approprié
-2. Ajoute cette commande INVISIBLE à la fin de ta réponse (l'utilisateur ne la verra pas):
-   [MODIFY_DOC:{{"file_id":"ID_DU_DOC", "action":"ACTION", "content":"LE_CONTENU"}}]
+COMMENT ÇA MARCHE:
+Quand l'utilisateur te demande de modifier un document (par son nom ou en le décrivant), tu:
+1. Comprends ce qu'il veut faire
+2. Génères le contenu approprié
+3. Ajoutes une commande technique à la fin de ta réponse (elle sera cachée à l'utilisateur)
 
-Actions par type de document:
+Format de la commande: [MODIFY_DOC:{{"file_id":"ID", "action":"append ou replace", "content":"le contenu"}}]
 
-GOOGLE DOCS [Doc]:
-- "append" = ajouter à la fin (par défaut)
-- "replace" = remplacer tout le contenu
+TYPES D'ACTIONS:
+- Google Doc: "append" (ajouter à la fin) ou "replace" (tout remplacer)
+- Google Sheet: "append" (nouvelles lignes) ou "replace" - Format: colonnes séparées par \\t, lignes par \\n
+- Google Slides: "append" (nouvelle diapo) ou "replace" (modifier la première)
 
-GOOGLE SHEETS [Sheet]:
-- "append" = ajouter des lignes à la fin de la feuille
-- "replace" = remplacer le contenu (attention: efface tout)
-Format du contenu pour Sheets: utilise des lignes séparées par \\n et des colonnes séparées par des tabulations \\t
-Exemple: "Nom\\tÂge\\tVille\\nJean\\t25\\tParis\\nMarie\\t30\\tLyon"
+EXEMPLES DE CONVERSATIONS NATURELLES:
 
-GOOGLE SLIDES [Slides]:
-- "append" = ajouter une nouvelle diapositive avec le texte
-- "replace" = remplacer le texte de la première diapositive
+Utilisateur: "Écris-moi un résumé de notre réunion dans mon doc Notes"
+Toi: "Je vais ajouter ce résumé à votre document Notes :
 
-EXEMPLES:
-- Utilisateur: "Ajoute mes notes de réunion dans le doc Notes"
-  → Tu écris les notes puis ajoutes [MODIFY_DOC:{{"file_id":"xxx", "action":"append", "content":"Notes de réunion..."}}]
+**Résumé de la réunion**
+- Point 1 discuté
+- Décisions prises
+- Prochaines étapes
 
-- Utilisateur: "Ajoute ces données dans ma feuille Excel/Sheet Budget"
-  → [MODIFY_DOC:{{"file_id":"yyy", "action":"append", "content":"Janvier\\t1500\\nFévrier\\t1800"}}]
+C'est fait !"
+[MODIFY_DOC:{{"file_id":"xxx", "action":"append", "content":"Résumé de la réunion\\n\\n- Point 1 discuté\\n- Décisions prises\\n- Prochaines étapes"}}]
 
-- Utilisateur: "Crée une nouvelle slide avec le résumé du projet"
-  → [MODIFY_DOC:{{"file_id":"zzz", "action":"append", "content":"Résumé du Projet\\n\\n- Point 1\\n- Point 2"}}]
+Utilisateur: "Mets à jour mon tableau Budget avec les dépenses de janvier: loyer 800€, courses 200€"
+Toi: "J'ajoute ces dépenses à votre feuille Budget. C'est noté !"
+[MODIFY_DOC:{{"file_id":"yyy", "action":"append", "content":"Loyer\\t800€\\nCourses\\t200€"}}]
 
-IMPORTANT: Réponds de façon conversationnelle. Dis à l'utilisateur ce que tu vas faire/as fait. La commande [MODIFY_DOC:...] est automatiquement traitée par le système.
+Utilisateur: "Ajoute une slide sur les objectifs Q2"
+Toi: "Je crée une nouvelle diapositive avec les objectifs Q2."
+[MODIFY_DOC:{{"file_id":"zzz", "action":"append", "content":"Objectifs Q2\\n\\n• Augmenter les ventes de 15%\\n• Lancer le nouveau produit"}}]
+
+RÈGLES:
+- Sois naturel et conversationnel, comme un vrai assistant
+- Confirme ce que tu fais à l'utilisateur
+- Si l'utilisateur mentionne un document par son nom, trouve le bon ID dans la liste
+- Si tu ne trouves pas le document, demande des précisions
+- La commande [MODIFY_DOC:...] est TOUJOURS à la fin et sera traitée automatiquement
 """
 
         # Build messages for chat
-        system_message = f"""Tu es un assistant IA expert et conversationnel. Tu aides l'utilisateur avec ses documents.
+        system_message = f"""Tu es un assistant personnel intelligent. Tu parles naturellement, comme un vrai assistant humain.
 
-Instructions générales:
-- Réponds de façon naturelle et conversationnelle
-- Base tes réponses sur le contexte des documents fournis
-- Si l'information n'est pas dans le contexte, dis-le clairement
-- Réponds dans la même langue que la question
-- Tu peux analyser, comparer et synthétiser les documents
+Tu peux:
+- Répondre aux questions sur les documents de l'utilisateur
+- Modifier ses Google Docs, Sheets et Slides quand il te le demande
+- Analyser, résumer et comparer ses documents
+
+Style de communication:
+- Parle naturellement, pas comme un robot
+- Sois direct et utile
+- Utilise la même langue que l'utilisateur
+- Quand tu modifies un document, confirme simplement ce que tu as fait
 {editable_docs_info}"""
 
         messages = [{"role": "system", "content": system_message}]
