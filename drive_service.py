@@ -77,8 +77,12 @@ class DriveService:
 
     def __init__(self, credentials):
         """Initialize Drive service with credentials"""
-        self.service = build('drive', 'v3', credentials=credentials)
         self.credentials = credentials
+        # Initialize all Google services
+        self.service = build('drive', 'v3', credentials=credentials)  # Drive API
+        self.docs_service = build('docs', 'v1', credentials=credentials)  # Docs API
+        self.sheets_service = build('sheets', 'v4', credentials=credentials)  # Sheets API
+        self.slides_service = build('slides', 'v1', credentials=credentials)  # Slides API
 
     def list_folders(self) -> List[Dict]:
         """
@@ -602,11 +606,8 @@ class DriveService:
             Result dictionary with status
         """
         try:
-            # Build Google Docs API service
-            docs_service = build('docs', 'v1', credentials=self.credentials)
-
             # First, get the document to find its content length
-            doc = docs_service.documents().get(documentId=file_id).execute()
+            doc = self.docs_service.documents().get(documentId=file_id).execute()
 
             # Get the end index of the document content
             content = doc.get('body', {}).get('content', [])
@@ -642,7 +643,7 @@ class DriveService:
 
             # Execute the batch update
             if requests:
-                docs_service.documents().batchUpdate(
+                self.docs_service.documents().batchUpdate(
                     documentId=file_id,
                     body={'requests': requests}
                 ).execute()
@@ -682,10 +683,8 @@ class DriveService:
             Result dictionary with status
         """
         try:
-            docs_service = build('docs', 'v1', credentials=self.credentials)
-
             # Get current document end index
-            doc = docs_service.documents().get(documentId=file_id).execute()
+            doc = self.docs_service.documents().get(documentId=file_id).execute()
             content = doc.get('body', {}).get('content', [])
             end_index = 1
             for element in content:
@@ -704,7 +703,7 @@ class DriveService:
                 }
             }]
 
-            docs_service.documents().batchUpdate(
+            self.docs_service.documents().batchUpdate(
                 documentId=file_id,
                 body={'requests': requests}
             ).execute()
@@ -737,10 +736,8 @@ class DriveService:
             Result dictionary with file_id and status
         """
         try:
-            docs_service = build('docs', 'v1', credentials=self.credentials)
-
             # Create empty document
-            doc = docs_service.documents().create(body={'title': title}).execute()
+            doc = self.docs_service.documents().create(body={'title': title}).execute()
             file_id = doc.get('documentId')
 
             # Add content if provided
@@ -751,7 +748,7 @@ class DriveService:
                         'text': content
                     }
                 }]
-                docs_service.documents().batchUpdate(
+                self.docs_service.documents().batchUpdate(
                     documentId=file_id,
                     body={'requests': requests}
                 ).execute()
@@ -808,15 +805,13 @@ class DriveService:
             Result dictionary with status
         """
         try:
-            sheets_service = build('sheets', 'v4', credentials=self.credentials)
-
             # Default range
             range_name = f"'{sheet_name}'!A1" if sheet_name else "A1"
 
             if clear_first:
                 # Clear the sheet first
                 clear_range = f"'{sheet_name}'" if sheet_name else "A:ZZ"
-                sheets_service.spreadsheets().values().clear(
+                self.sheets_service.spreadsheets().values().clear(
                     spreadsheetId=file_id,
                     range=clear_range,
                     body={}
@@ -824,7 +819,7 @@ class DriveService:
 
             # Update with new data
             body = {'values': data}
-            result = sheets_service.spreadsheets().values().update(
+            result = self.sheets_service.spreadsheets().values().update(
                 spreadsheetId=file_id,
                 range=range_name,
                 valueInputOption='USER_ENTERED',
@@ -856,12 +851,10 @@ class DriveService:
             Result dictionary with status
         """
         try:
-            sheets_service = build('sheets', 'v4', credentials=self.credentials)
-
             range_name = f"'{sheet_name}'!A:A" if sheet_name else "A:A"
 
             body = {'values': data}
-            result = sheets_service.spreadsheets().values().append(
+            result = self.sheets_service.spreadsheets().values().append(
                 spreadsheetId=file_id,
                 range=range_name,
                 valueInputOption='USER_ENTERED',
@@ -893,11 +886,9 @@ class DriveService:
             Dict with values and status
         """
         try:
-            sheets_service = build('sheets', 'v4', credentials=self.credentials)
-
             range_name = f"'{sheet_name}'" if sheet_name else "A:ZZ"
 
-            result = sheets_service.spreadsheets().values().get(
+            result = self.sheets_service.spreadsheets().values().get(
                 spreadsheetId=file_id,
                 range=range_name
             ).execute()
@@ -927,10 +918,8 @@ class DriveService:
             Result dictionary with status
         """
         try:
-            slides_service = build('slides', 'v1', credentials=self.credentials)
-
             body = {'requests': updates}
-            result = slides_service.presentations().batchUpdate(
+            result = self.slides_service.presentations().batchUpdate(
                 presentationId=file_id,
                 body=body
             ).execute()
@@ -960,8 +949,6 @@ class DriveService:
             Result dictionary with status
         """
         try:
-            slides_service = build('slides', 'v1', credentials=self.credentials)
-
             # Create a new slide
             requests = [
                 {
@@ -973,7 +960,7 @@ class DriveService:
                 }
             ]
 
-            result = slides_service.presentations().batchUpdate(
+            result = self.slides_service.presentations().batchUpdate(
                 presentationId=file_id,
                 body={'requests': requests}
             ).execute()
@@ -982,7 +969,7 @@ class DriveService:
             slide_id = result['replies'][0]['createSlide']['objectId']
 
             # Get the presentation to find placeholder IDs
-            presentation = slides_service.presentations().get(
+            presentation = self.slides_service.presentations().get(
                 presentationId=file_id
             ).execute()
 
@@ -1017,7 +1004,7 @@ class DriveService:
                 })
 
             if text_requests:
-                slides_service.presentations().batchUpdate(
+                self.slides_service.presentations().batchUpdate(
                     presentationId=file_id,
                     body={'requests': text_requests}
                 ).execute()
