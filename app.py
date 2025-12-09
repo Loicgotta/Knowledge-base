@@ -388,15 +388,22 @@ def chat():
         rag = get_rag_engine()
         credentials = get_valid_credentials()
 
-        # Get list of editable documents for the agent
+        # Get list of editable documents for the agent (Docs, Sheets, Slides)
         editable_docs = []
         if credentials:
             try:
                 drive_service = DriveService(credentials)
+                # Query for Google Docs, Sheets, and Slides
+                mime_types = [
+                    "mimeType='application/vnd.google-apps.document'",
+                    "mimeType='application/vnd.google-apps.spreadsheet'",
+                    "mimeType='application/vnd.google-apps.presentation'"
+                ]
+                query = f"({' or '.join(mime_types)}) and trashed=false"
                 results = drive_service.service.files().list(
                     pageSize=50,
-                    fields="files(id, name)",
-                    q="mimeType='application/vnd.google-apps.document' and trashed=false",
+                    fields="files(id, name, mimeType)",
+                    q=query,
                     orderBy="modifiedTime desc"
                 ).execute()
                 editable_docs = results.get('files', [])
@@ -447,7 +454,7 @@ def chat():
 
 
 def execute_agent_modification(answer: str, credentials) -> dict:
-    """Execute document modification requested by the agent"""
+    """Execute document modification requested by the agent (Docs, Sheets, Slides)"""
     import re
     import json
 
@@ -466,32 +473,70 @@ def execute_agent_modification(answer: str, credentials) -> dict:
         file_id = command.get('file_id')
         action = command.get('action', 'append')  # 'replace' or 'append'
         content = command.get('content', '')
+        doc_type = command.get('type', 'doc')  # 'doc', 'sheet', or 'slides'
 
         if not file_id or not content:
             print(f"[execute_agent_modification] Missing file_id or content", flush=True)
             return {'status': 'error', 'message': 'Missing file_id or content'}
 
-        print(f"[execute_agent_modification] Action: {action}, File: {file_id}", flush=True)
+        print(f"[execute_agent_modification] Type: {doc_type}, Action: {action}, File: {file_id}", flush=True)
 
         drive_service = DriveService(credentials)
 
-        # Get file name for response
+        # Get file metadata to determine type
         file_meta = drive_service.get_file_metadata(file_id)
         file_name = file_meta.get('name', 'Document')
+        mime_type = file_meta.get('mimeType', '')
 
-        if action == 'replace':
-            result = drive_service.update_google_doc(file_id, content)
+        # Determine document type from mimeType if not specified
+        if mime_type == 'application/vnd.google-apps.spreadsheet':
+            doc_type = 'sheet'
+        elif mime_type == 'application/vnd.google-apps.presentation':
+            doc_type = 'slides'
         else:
-            result = drive_service.append_to_google_doc(file_id, content)
+            doc_type = 'doc'
+
+        print(f"[execute_agent_modification] Detected type: {doc_type}, mimeType: {mime_type}", flush=True)
+
+        # Execute based on document type
+        if doc_type == 'sheet':
+            # Parse content as rows for sheets
+            # Content can be: "row1col1,row1col2\nrow2col1,row2col2" or JSON array
+            try:
+                if content.startswith('['):
+                    data = json.loads(content)
+                else:
+                    # Parse CSV-like content
+                    data = [row.split(',') for row in content.strip().split('\n')]
+            except:
+                data = [[content]]  # Single cell
+
+            if action == 'replace':
+                result = drive_service.update_google_sheet(file_id, data, clear_first=True)
+            else:
+                result = drive_service.append_to_google_sheet(file_id, data)
+
+        elif doc_type == 'slides':
+            # For slides, add a new slide with the content
+            title = command.get('title', 'Nouvelle slide')
+            result = drive_service.add_slide_with_text(file_id, title, content)
+
+        else:  # Default: Google Doc
+            if action == 'replace':
+                result = drive_service.update_google_doc(file_id, content)
+            else:
+                result = drive_service.append_to_google_doc(file_id, content)
 
         result['file_name'] = file_name
+        result['doc_type'] = doc_type
         return result
 
     except json.JSONDecodeError as e:
         print(f"[execute_agent_modification] JSON parse error: {e}", flush=True)
         return {'status': 'error', 'message': f'Invalid command format: {e}'}
     except Exception as e:
-        print(f"[execute_agent_modification] Error: {e}", flush=True)
+        import traceback
+        print(f"[execute_agent_modification] Error: {e}\n{traceback.format_exc()}", flush=True)
         return {'status': 'error', 'message': str(e)}
 
 

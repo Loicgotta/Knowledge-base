@@ -791,3 +791,246 @@ class DriveService:
         except HttpError as error:
             print(f"[get_file_metadata] Error: {error}", flush=True)
             return {}
+
+    # ============== Google Sheets Methods ==============
+
+    def update_google_sheet(self, file_id: str, data: list, sheet_name: str = None, clear_first: bool = False) -> Dict:
+        """
+        Update a Google Sheet with data
+
+        Args:
+            file_id: The ID of the Google Sheet
+            data: 2D list of values [[row1], [row2], ...]
+            sheet_name: Optional sheet name (defaults to first sheet)
+            clear_first: If True, clear the sheet before adding data
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            sheets_service = build('sheets', 'v4', credentials=self.credentials)
+
+            # Default range
+            range_name = f"'{sheet_name}'!A1" if sheet_name else "A1"
+
+            if clear_first:
+                # Clear the sheet first
+                clear_range = f"'{sheet_name}'" if sheet_name else "A:ZZ"
+                sheets_service.spreadsheets().values().clear(
+                    spreadsheetId=file_id,
+                    range=clear_range,
+                    body={}
+                ).execute()
+
+            # Update with new data
+            body = {'values': data}
+            result = sheets_service.spreadsheets().values().update(
+                spreadsheetId=file_id,
+                range=range_name,
+                valueInputOption='USER_ENTERED',
+                body=body
+            ).execute()
+
+            print(f"[update_google_sheet] Updated {result.get('updatedCells', 0)} cells", flush=True)
+            return {
+                'status': 'success',
+                'message': f"Updated {result.get('updatedCells', 0)} cells",
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[update_google_sheet] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}
+
+    def append_to_google_sheet(self, file_id: str, data: list, sheet_name: str = None) -> Dict:
+        """
+        Append rows to a Google Sheet
+
+        Args:
+            file_id: The ID of the Google Sheet
+            data: 2D list of values to append [[row1], [row2], ...]
+            sheet_name: Optional sheet name
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            sheets_service = build('sheets', 'v4', credentials=self.credentials)
+
+            range_name = f"'{sheet_name}'!A:A" if sheet_name else "A:A"
+
+            body = {'values': data}
+            result = sheets_service.spreadsheets().values().append(
+                spreadsheetId=file_id,
+                range=range_name,
+                valueInputOption='USER_ENTERED',
+                insertDataOption='INSERT_ROWS',
+                body=body
+            ).execute()
+
+            print(f"[append_to_google_sheet] Appended rows", flush=True)
+            return {
+                'status': 'success',
+                'message': f"Appended {len(data)} rows",
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[append_to_google_sheet] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}
+
+    def get_sheet_content(self, file_id: str, sheet_name: str = None) -> Dict:
+        """
+        Get content from a Google Sheet
+
+        Args:
+            file_id: The ID of the Google Sheet
+            sheet_name: Optional sheet name
+
+        Returns:
+            Dict with values and status
+        """
+        try:
+            sheets_service = build('sheets', 'v4', credentials=self.credentials)
+
+            range_name = f"'{sheet_name}'" if sheet_name else "A:ZZ"
+
+            result = sheets_service.spreadsheets().values().get(
+                spreadsheetId=file_id,
+                range=range_name
+            ).execute()
+
+            values = result.get('values', [])
+            return {
+                'status': 'success',
+                'values': values,
+                'rows': len(values)
+            }
+
+        except Exception as e:
+            print(f"[get_sheet_content] Error: {e}", flush=True)
+            return {'status': 'error', 'message': str(e), 'values': []}
+
+    # ============== Google Slides Methods ==============
+
+    def update_google_slides(self, file_id: str, updates: list) -> Dict:
+        """
+        Update a Google Slides presentation
+
+        Args:
+            file_id: The ID of the Google Slides presentation
+            updates: List of update requests
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            slides_service = build('slides', 'v1', credentials=self.credentials)
+
+            body = {'requests': updates}
+            result = slides_service.presentations().batchUpdate(
+                presentationId=file_id,
+                body=body
+            ).execute()
+
+            print(f"[update_google_slides] Updated presentation", flush=True)
+            return {
+                'status': 'success',
+                'message': 'Presentation updated',
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[update_google_slides] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}
+
+    def add_slide_with_text(self, file_id: str, title: str, body_text: str) -> Dict:
+        """
+        Add a new slide with title and body text
+
+        Args:
+            file_id: The ID of the Google Slides presentation
+            title: Slide title
+            body_text: Slide body content
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            slides_service = build('slides', 'v1', credentials=self.credentials)
+
+            # Create a new slide
+            requests = [
+                {
+                    'createSlide': {
+                        'slideLayoutReference': {
+                            'predefinedLayout': 'TITLE_AND_BODY'
+                        }
+                    }
+                }
+            ]
+
+            result = slides_service.presentations().batchUpdate(
+                presentationId=file_id,
+                body={'requests': requests}
+            ).execute()
+
+            # Get the new slide ID
+            slide_id = result['replies'][0]['createSlide']['objectId']
+
+            # Get the presentation to find placeholder IDs
+            presentation = slides_service.presentations().get(
+                presentationId=file_id
+            ).execute()
+
+            # Find the new slide and its placeholders
+            title_id = None
+            body_id = None
+            for slide in presentation.get('slides', []):
+                if slide['objectId'] == slide_id:
+                    for element in slide.get('pageElements', []):
+                        if 'shape' in element:
+                            placeholder = element['shape'].get('placeholder', {})
+                            if placeholder.get('type') == 'TITLE':
+                                title_id = element['objectId']
+                            elif placeholder.get('type') == 'BODY':
+                                body_id = element['objectId']
+
+            # Add text to placeholders
+            text_requests = []
+            if title_id:
+                text_requests.append({
+                    'insertText': {
+                        'objectId': title_id,
+                        'text': title
+                    }
+                })
+            if body_id:
+                text_requests.append({
+                    'insertText': {
+                        'objectId': body_id,
+                        'text': body_text
+                    }
+                })
+
+            if text_requests:
+                slides_service.presentations().batchUpdate(
+                    presentationId=file_id,
+                    body={'requests': text_requests}
+                ).execute()
+
+            print(f"[add_slide_with_text] Added new slide", flush=True)
+            return {
+                'status': 'success',
+                'message': 'New slide added',
+                'file_id': file_id,
+                'slide_id': slide_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[add_slide_with_text] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}

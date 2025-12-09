@@ -392,30 +392,55 @@ class RAGEngine:
         # Build editable docs list for the prompt
         editable_docs_info = ""
         if editable_docs:
-            docs_list = "\n".join([f"- \"{doc['name']}\" (ID: {doc['id']})" for doc in editable_docs[:20]])
+            # Format docs with their types
+            def get_doc_type(mime_type):
+                if 'document' in mime_type:
+                    return 'Doc'
+                elif 'spreadsheet' in mime_type:
+                    return 'Sheet'
+                elif 'presentation' in mime_type:
+                    return 'Slides'
+                return 'Fichier'
+
+            docs_list = "\n".join([f"- \"{doc['name']}\" [{get_doc_type(doc.get('mimeType', ''))}] (ID: {doc['id']})" for doc in editable_docs[:20]])
             editable_docs_info = f"""
 
 === CAPACITÉ DE MODIFICATION DE DOCUMENTS ===
-Tu peux modifier les Google Docs de l'utilisateur quand il te le demande.
+Tu peux modifier les Google Docs, Sheets et Slides de l'utilisateur quand il te le demande.
 
 Documents disponibles:
 {docs_list}
 
-Quand l'utilisateur te demande de modifier, ajouter, écrire, mettre à jour, ou créer du contenu dans un document:
+Quand l'utilisateur te demande de modifier, ajouter, écrire, mettre à jour du contenu dans un document:
 1. Génère le contenu approprié
 2. Ajoute cette commande INVISIBLE à la fin de ta réponse (l'utilisateur ne la verra pas):
-   [MODIFY_DOC:{{"file_id":"ID_DU_DOC", "action":"append", "content":"LE_CONTENU"}}]
+   [MODIFY_DOC:{{"file_id":"ID_DU_DOC", "action":"ACTION", "content":"LE_CONTENU"}}]
 
-Actions:
-- "append" = ajouter à la fin (par défaut, pour ajouter des notes, sections, etc.)
-- "replace" = remplacer tout le contenu (seulement si l'utilisateur demande de tout réécrire)
+Actions par type de document:
+
+GOOGLE DOCS [Doc]:
+- "append" = ajouter à la fin (par défaut)
+- "replace" = remplacer tout le contenu
+
+GOOGLE SHEETS [Sheet]:
+- "append" = ajouter des lignes à la fin de la feuille
+- "replace" = remplacer le contenu (attention: efface tout)
+Format du contenu pour Sheets: utilise des lignes séparées par \\n et des colonnes séparées par des tabulations \\t
+Exemple: "Nom\\tÂge\\tVille\\nJean\\t25\\tParis\\nMarie\\t30\\tLyon"
+
+GOOGLE SLIDES [Slides]:
+- "append" = ajouter une nouvelle diapositive avec le texte
+- "replace" = remplacer le texte de la première diapositive
 
 EXEMPLES:
 - Utilisateur: "Ajoute mes notes de réunion dans le doc Notes"
   → Tu écris les notes puis ajoutes [MODIFY_DOC:{{"file_id":"xxx", "action":"append", "content":"Notes de réunion..."}}]
 
-- Utilisateur: "Écris un résumé de ce projet dans mon document Rapport"
-  → Tu réponds "Je vais ajouter ce résumé à votre document Rapport" puis la commande
+- Utilisateur: "Ajoute ces données dans ma feuille Excel/Sheet Budget"
+  → [MODIFY_DOC:{{"file_id":"yyy", "action":"append", "content":"Janvier\\t1500\\nFévrier\\t1800"}}]
+
+- Utilisateur: "Crée une nouvelle slide avec le résumé du projet"
+  → [MODIFY_DOC:{{"file_id":"zzz", "action":"append", "content":"Résumé du Projet\\n\\n- Point 1\\n- Point 2"}}]
 
 IMPORTANT: Réponds de façon conversationnelle. Dis à l'utilisateur ce que tu vas faire/as fait. La commande [MODIFY_DOC:...] est automatiquement traitée par le système.
 """
