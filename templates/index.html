@@ -389,82 +389,50 @@
         </div>
     </div>
 
-    <!-- Document Editor Modal -->
+    <!-- Document Editor Chat Modal -->
     <div class="modal-overlay" id="editor-modal">
-        <div class="modal" style="max-width: 800px; height: 80vh;">
-            <h3>Editer un document Google Doc</h3>
+        <div class="modal" style="max-width: 700px; height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
+                <h3 style="margin: 0;">Editer mes documents</h3>
+                <button class="btn btn-secondary" onclick="closeDocEditor()" style="padding: 0.5rem 0.75rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
 
             <div id="editor-loading" style="text-align: center; padding: 2rem;">
                 <div class="spinner"></div>
-                <p>Chargement des documents...</p>
+                <p>Chargement de vos documents...</p>
             </div>
 
-            <div id="editor-content" style="display: none; height: calc(100% - 60px); display: flex; flex-direction: column;">
-                <!-- Document selector -->
-                <div style="margin-bottom: 1rem;">
-                    <label style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Document a modifier:</label>
-                    <select id="doc-selector" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem;" onchange="onDocSelected()">
-                        <option value="">-- Selectionnez un document --</option>
-                    </select>
+            <div id="editor-chat-content" style="display: none; flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                <!-- Documents disponibles -->
+                <div style="background: var(--bg-light); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem;">
+                    <strong>Vos documents:</strong>
+                    <div id="doc-list-preview" style="margin-top: 0.5rem; color: var(--text-secondary); max-height: 60px; overflow-y: auto;"></div>
                 </div>
 
-                <!-- Action selector -->
-                <div style="margin-bottom: 1rem;">
-                    <label style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Action:</label>
-                    <div style="display: flex; gap: 1rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="radio" name="edit-action" value="replace" checked> Remplacer le contenu
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="radio" name="edit-action" value="append"> Ajouter a la fin
-                        </label>
+                <!-- Chat messages -->
+                <div id="editor-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem 0; min-height: 200px;">
+                    <div class="message assistant">
+                        Bonjour ! Je peux modifier vos documents Google. Dites-moi simplement ce que vous voulez faire, par exemple :
+                        <br><br>
+                        • "Ajoute une section 'Conclusion' dans mon doc Rapport"<br>
+                        • "Mets les depenses du mois dans ma feuille Budget"<br>
+                        • "Cree une nouvelle slide avec le resume"
                     </div>
                 </div>
 
-                <!-- Content textarea -->
-                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                    <label style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Nouveau contenu:</label>
-                    <textarea id="doc-content" style="flex: 1; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.875rem; resize: none;" placeholder="Entrez le contenu ici..."></textarea>
+                <!-- Input area -->
+                <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-top: auto;">
+                    <input type="text" id="editor-input" placeholder="Decrivez ce que vous voulez modifier..." style="flex: 1; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 0.95rem;" onkeypress="handleEditorKeyPress(event)">
+                    <button class="btn btn-primary" onclick="sendEditorMessage()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
                 </div>
-
-                <!-- Buttons -->
-                <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
-                    <button class="btn btn-secondary" onclick="closeDocEditor()">Annuler</button>
-                    <div style="display: flex; gap: 0.75rem;">
-                        <button class="btn btn-primary" onclick="createNewDoc()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                            </svg>
-                            Nouveau document
-                        </button>
-                        <button class="btn btn-success" onclick="saveDocument()" id="save-doc-btn" disabled>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                            </svg>
-                            Enregistrer
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- New Document Modal -->
-    <div class="modal-overlay" id="new-doc-modal">
-        <div class="modal" style="max-width: 500px;">
-            <h3>Creer un nouveau document</h3>
-            <div style="margin-bottom: 1rem;">
-                <label style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Titre du document:</label>
-                <input type="text" id="new-doc-title" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px;" placeholder="Mon nouveau document">
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <label style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Contenu initial (optionnel):</label>
-                <textarea id="new-doc-content" style="width: 100%; height: 150px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; resize: vertical;" placeholder="Contenu du document..."></textarea>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-                <button class="btn btn-secondary" onclick="closeNewDocModal()">Annuler</button>
-                <button class="btn btn-success" onclick="submitNewDoc()">Creer</button>
             </div>
         </div>
     </div>
@@ -782,18 +750,30 @@
             }
         }
 
-        // ========== Document Editor Functions ==========
+        // ========== Document Editor Chat Functions ==========
         let editableDocuments = [];
-        let selectedDocId = null;
+        let editorConversationHistory = [];
 
         async function openDocEditor() {
             const modal = document.getElementById('editor-modal');
             const loading = document.getElementById('editor-loading');
-            const content = document.getElementById('editor-content');
+            const content = document.getElementById('editor-chat-content');
 
             modal.classList.add('active');
             loading.style.display = 'block';
             content.style.display = 'none';
+
+            // Reset chat
+            editorConversationHistory = [];
+            document.getElementById('editor-messages').innerHTML = `
+                <div class="message assistant">
+                    Bonjour ! Je peux modifier vos documents Google. Dites-moi simplement ce que vous voulez faire, par exemple :
+                    <br><br>
+                    • "Ajoute une section 'Conclusion' dans mon doc Rapport"<br>
+                    • "Mets les depenses du mois dans ma feuille Budget"<br>
+                    • "Cree une nouvelle slide avec le resume"
+                </div>
+            `;
 
             try {
                 const response = await fetch('/list-editable-documents');
@@ -801,9 +781,10 @@
 
                 if (data.status === 'success') {
                     editableDocuments = data.documents;
-                    populateDocSelector();
+                    displayDocumentList();
                     loading.style.display = 'none';
                     content.style.display = 'flex';
+                    document.getElementById('editor-input').focus();
                 } else {
                     alert('Erreur: ' + data.error);
                     closeDocEditor();
@@ -814,118 +795,108 @@
             }
         }
 
+        function displayDocumentList() {
+            const preview = document.getElementById('doc-list-preview');
+            if (editableDocuments.length === 0) {
+                preview.innerHTML = '<em>Aucun document Google trouve</em>';
+                return;
+            }
+
+            const docTypes = {
+                'application/vnd.google-apps.document': 'Doc',
+                'application/vnd.google-apps.spreadsheet': 'Sheet',
+                'application/vnd.google-apps.presentation': 'Slides'
+            };
+
+            preview.innerHTML = editableDocuments.slice(0, 10).map(doc => {
+                const type = docTypes[doc.mimeType] || 'Fichier';
+                return `<span style="display: inline-block; background: white; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.125rem; font-size: 0.8rem;">${doc.name} <small style="color: var(--primary);">[${type}]</small></span>`;
+            }).join('') + (editableDocuments.length > 10 ? `<span style="color: var(--text-secondary);"> +${editableDocuments.length - 10} autres</span>` : '');
+        }
+
         function closeDocEditor() {
             document.getElementById('editor-modal').classList.remove('active');
-            document.getElementById('doc-selector').value = '';
-            document.getElementById('doc-content').value = '';
-            document.getElementById('save-doc-btn').disabled = true;
-            selectedDocId = null;
+            document.getElementById('editor-input').value = '';
         }
 
-        function populateDocSelector() {
-            const selector = document.getElementById('doc-selector');
-            selector.innerHTML = '<option value="">-- Selectionnez un document --</option>';
-
-            editableDocuments.forEach(doc => {
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = doc.name;
-                selector.appendChild(option);
-            });
+        function handleEditorKeyPress(event) {
+            if (event.key === 'Enter') sendEditorMessage();
         }
 
-        function onDocSelected() {
-            const selector = document.getElementById('doc-selector');
-            selectedDocId = selector.value;
-            document.getElementById('save-doc-btn').disabled = !selectedDocId;
-        }
+        async function sendEditorMessage() {
+            const input = document.getElementById('editor-input');
+            const message = input.value.trim();
+            if (!message) return;
 
-        async function saveDocument() {
-            if (!selectedDocId) {
-                alert('Veuillez selectionner un document');
-                return;
-            }
+            const messagesContainer = document.getElementById('editor-messages');
 
-            const content = document.getElementById('doc-content').value;
-            const action = document.querySelector('input[name="edit-action"]:checked').value;
+            // Add user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'message user';
+            userDiv.textContent = message;
+            messagesContainer.appendChild(userDiv);
 
-            if (!content.trim()) {
-                alert('Veuillez entrer du contenu');
-                return;
-            }
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            const saveBtn = document.getElementById('save-doc-btn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Enregistrement...';
+            // Show typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             try {
-                const response = await fetch('/modify-document', {
+                const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        file_id: selectedDocId,
-                        content: content,
-                        action: action
+                        message,
+                        history: editorConversationHistory
                     })
                 });
 
                 const data = await response.json();
+                typingDiv.remove();
 
-                if (data.status === 'success') {
-                    alert('Document modifie avec succes!');
-                    closeDocEditor();
+                const assistantDiv = document.createElement('div');
+                assistantDiv.className = 'message assistant';
+
+                if (data.error) {
+                    assistantDiv.className = 'message error';
+                    assistantDiv.textContent = data.error;
                 } else {
-                    alert('Erreur: ' + data.error);
+                    assistantDiv.innerHTML = data.answer;
+
+                    // Show modification status if any
+                    if (data.modification_result) {
+                        const statusDiv = document.createElement('div');
+                        statusDiv.style.cssText = 'margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem;';
+                        if (data.modification_result.status === 'success') {
+                            statusDiv.style.background = '#e8f5e9';
+                            statusDiv.style.color = '#2e7d32';
+                            statusDiv.innerHTML = '✓ ' + data.modification_result.message;
+                        } else {
+                            statusDiv.style.background = '#ffebee';
+                            statusDiv.style.color = '#c62828';
+                            statusDiv.innerHTML = '✗ Erreur: ' + data.modification_result.message;
+                        }
+                        assistantDiv.appendChild(statusDiv);
+                    }
+
+                    editorConversationHistory.push({ role: 'user', content: message });
+                    editorConversationHistory.push({ role: 'assistant', content: data.answer });
                 }
+
+                messagesContainer.appendChild(assistantDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
             } catch (error) {
-                alert('Erreur de connexion: ' + error.message);
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                </svg> Enregistrer`;
-            }
-        }
-
-        function createNewDoc() {
-            document.getElementById('new-doc-modal').classList.add('active');
-        }
-
-        function closeNewDocModal() {
-            document.getElementById('new-doc-modal').classList.remove('active');
-            document.getElementById('new-doc-title').value = '';
-            document.getElementById('new-doc-content').value = '';
-        }
-
-        async function submitNewDoc() {
-            const title = document.getElementById('new-doc-title').value.trim();
-            const content = document.getElementById('new-doc-content').value;
-
-            if (!title) {
-                alert('Veuillez entrer un titre');
-                return;
-            }
-
-            try {
-                const response = await fetch('/create-document', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content })
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'success') {
-                    alert(`Document "${title}" cree avec succes!`);
-                    closeNewDocModal();
-                    // Refresh the document list
-                    openDocEditor();
-                } else {
-                    alert('Erreur: ' + data.error);
-                }
-            } catch (error) {
-                alert('Erreur de connexion: ' + error.message);
+                typingDiv.remove();
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'message error';
+                errorDiv.textContent = 'Erreur de connexion';
+                messagesContainer.appendChild(errorDiv);
             }
         }
     </script>
