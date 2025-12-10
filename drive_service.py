@@ -594,6 +594,33 @@ class DriveService:
             print(f"Error getting user info: {error}")
             return {}
 
+    def get_document_content(self, file_id: str) -> str:
+        """
+        Get the text content of a Google Doc
+
+        Args:
+            file_id: The ID of the Google Doc
+
+        Returns:
+            The text content of the document
+        """
+        try:
+            doc = self.docs_service.documents().get(documentId=file_id).execute()
+
+            # Extract text from all elements
+            text_parts = []
+            for element in doc.get('body', {}).get('content', []):
+                if 'paragraph' in element:
+                    for elem in element['paragraph'].get('elements', []):
+                        if 'textRun' in elem:
+                            text_parts.append(elem['textRun'].get('content', ''))
+
+            return ''.join(text_parts)
+
+        except Exception as e:
+            print(f"[get_document_content] Error: {e}", flush=True)
+            return ""
+
     def update_google_doc(self, file_id: str, new_content: str) -> Dict:
         """
         Update a Google Doc with new content (replaces entire content)
@@ -718,6 +745,147 @@ class DriveService:
         except Exception as e:
             import traceback
             print(f"[append_to_google_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e),
+                'file_id': file_id
+            }
+
+    def replace_text_in_doc(self, file_id: str, find_text: str, replace_text: str) -> Dict:
+        """
+        Find and replace specific text in a Google Doc
+
+        Args:
+            file_id: The ID of the Google Doc
+            find_text: The text to find
+            replace_text: The text to replace it with
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            requests = [{
+                'replaceAllText': {
+                    'containsText': {
+                        'text': find_text,
+                        'matchCase': False
+                    },
+                    'replaceText': replace_text
+                }
+            }]
+
+            result = self.docs_service.documents().batchUpdate(
+                documentId=file_id,
+                body={'requests': requests}
+            ).execute()
+
+            # Check how many replacements were made
+            replies = result.get('replies', [])
+            occurrences = 0
+            if replies and 'replaceAllText' in replies[0]:
+                occurrences = replies[0]['replaceAllText'].get('occurrencesChanged', 0)
+
+            print(f"[replace_text_in_doc] Replaced {occurrences} occurrences in {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Replaced {occurrences} occurrence(s) of "{find_text}"',
+                'occurrences': occurrences,
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[replace_text_in_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e),
+                'file_id': file_id
+            }
+
+    def insert_text_after(self, file_id: str, after_text: str, new_text: str) -> Dict:
+        """
+        Insert text after a specific text in a Google Doc
+
+        Args:
+            file_id: The ID of the Google Doc
+            after_text: The text after which to insert
+            new_text: The text to insert
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Get the document content
+            doc = self.docs_service.documents().get(documentId=file_id).execute()
+
+            # Find the position of after_text
+            full_text = ""
+            for element in doc.get('body', {}).get('content', []):
+                if 'paragraph' in element:
+                    for elem in element['paragraph'].get('elements', []):
+                        if 'textRun' in elem:
+                            full_text += elem['textRun'].get('content', '')
+
+            # Find the index where to insert
+            position = full_text.find(after_text)
+            if position == -1:
+                return {
+                    'status': 'error',
+                    'message': f'Text "{after_text}" not found in document',
+                    'file_id': file_id
+                }
+
+            # Calculate the insertion index (+1 for document offset, + length of found text)
+            insert_index = position + len(after_text) + 1
+
+            requests = [{
+                'insertText': {
+                    'location': {
+                        'index': insert_index
+                    },
+                    'text': new_text
+                }
+            }]
+
+            self.docs_service.documents().batchUpdate(
+                documentId=file_id,
+                body={'requests': requests}
+            ).execute()
+
+            print(f"[insert_text_after] Inserted text after '{after_text}' in {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Text inserted after "{after_text}"',
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[insert_text_after] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e),
+                'file_id': file_id
+            }
+
+    def delete_text_in_doc(self, file_id: str, text_to_delete: str) -> Dict:
+        """
+        Delete specific text from a Google Doc
+
+        Args:
+            file_id: The ID of the Google Doc
+            text_to_delete: The text to delete
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Use replace with empty string to delete
+            return self.replace_text_in_doc(file_id, text_to_delete, '')
+
+        except Exception as e:
+            import traceback
+            print(f"[delete_text_in_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
             return {
                 'status': 'error',
                 'message': str(e),

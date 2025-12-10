@@ -648,6 +648,124 @@ def execute_cells_modification(answer: str, credentials) -> dict:
         return {'status': 'error', 'message': str(e)}
 
 
+def extract_json_from_command(answer: str, marker: str) -> dict:
+    """Extract JSON from a command string using brace counting"""
+    import json
+
+    start_idx = answer.find(marker)
+    if start_idx == -1:
+        return None
+
+    json_start = start_idx + len(marker)
+    brace_count = 0
+    json_end = json_start
+    in_string = False
+    escape_next = False
+
+    for i, char in enumerate(answer[json_start:], start=json_start):
+        if escape_next:
+            escape_next = False
+            continue
+        if char == '\\':
+            escape_next = True
+            continue
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == '{':
+            brace_count += 1
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                json_end = i + 1
+                break
+
+    command_str = answer[json_start:json_end]
+    return json.loads(command_str)
+
+
+def execute_replace_text(answer: str, credentials) -> dict:
+    """Execute text replacement in a Google Doc"""
+    try:
+        command = extract_json_from_command(answer, '[REPLACE_TEXT:')
+        if not command:
+            return None
+
+        file_id = command.get('file_id')
+        find_text = command.get('find')
+        replace_text = command.get('replace')
+
+        if not file_id or not find_text:
+            return {'status': 'error', 'message': 'Missing file_id or find text'}
+
+        print(f"[execute_replace_text] Replacing '{find_text}' with '{replace_text}' in {file_id}", flush=True)
+
+        drive_service = DriveService(credentials)
+        result = drive_service.replace_text_in_doc(file_id, find_text, replace_text)
+
+        return result
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_replace_text] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
+def execute_insert_after(answer: str, credentials) -> dict:
+    """Execute text insertion after specific text in a Google Doc"""
+    try:
+        command = extract_json_from_command(answer, '[INSERT_AFTER:')
+        if not command:
+            return None
+
+        file_id = command.get('file_id')
+        after_text = command.get('after')
+        content = command.get('content')
+
+        if not file_id or not after_text or not content:
+            return {'status': 'error', 'message': 'Missing file_id, after text, or content'}
+
+        print(f"[execute_insert_after] Inserting after '{after_text}' in {file_id}", flush=True)
+
+        drive_service = DriveService(credentials)
+        result = drive_service.insert_text_after(file_id, after_text, content)
+
+        return result
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_insert_after] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
+def execute_delete_text(answer: str, credentials) -> dict:
+    """Execute text deletion in a Google Doc"""
+    try:
+        command = extract_json_from_command(answer, '[DELETE_TEXT:')
+        if not command:
+            return None
+
+        file_id = command.get('file_id')
+        text_to_delete = command.get('text')
+
+        if not file_id or not text_to_delete:
+            return {'status': 'error', 'message': 'Missing file_id or text to delete'}
+
+        print(f"[execute_delete_text] Deleting '{text_to_delete}' from {file_id}", flush=True)
+
+        drive_service = DriveService(credentials)
+        result = drive_service.delete_text_in_doc(file_id, text_to_delete)
+
+        return result
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_delete_text] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
 @app.route('/chat-edit', methods=['POST'])
 def chat_edit():
     """Chat endpoint for editing a specific pre-selected document"""
@@ -813,11 +931,105 @@ COMMANDE:
 
         else:
             doc_type = 'Google Doc'
-            doc_instructions = f"""Pour ajouter du contenu a la fin:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Le texte a ajouter"}}]
 
-Pour remplacer tout le contenu:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu"}}]"""
+            # Read current document content
+            doc_content = drive_service.get_document_content(document['id'])
+            doc_text = doc_content if doc_content else "(Document vide)"
+
+            # Truncate if too long for display
+            if len(doc_text) > 3000:
+                doc_text = doc_text[:3000] + "\n... (contenu tronque)"
+
+            doc_instructions = f"""
+=== METHODOLOGIE D'ANALYSE ET MODIFICATION DU DOCUMENT ===
+
+***** REGLE FONDAMENTALE *****
+NE REMPLACE PAS TOUT LE DOCUMENT si seule une partie doit etre modifiee!
+Analyse d'abord le contenu existant, puis choisis la commande APPROPRIEE.
+*****************************
+
+ETAPE 1: ANALYSER LE DOCUMENT ACTUEL
+Voici le contenu actuel du document:
+--- DEBUT DU CONTENU ---
+{doc_text}
+--- FIN DU CONTENU ---
+
+ETAPE 2: IDENTIFIER LA STRUCTURE
+Avant toute modification, analyse:
+1. SECTIONS: Y a-t-il des titres, sous-titres, chapitres?
+2. PARAGRAPHES: Comment le texte est-il organise?
+3. LISTES: Y a-t-il des listes a puces ou numerotees?
+4. ELEMENTS CLES: Quels sont les points importants du document?
+
+ETAPE 3: COMPRENDRE LA DEMANDE
+Determine precisement ce que l'utilisateur veut:
+- AJOUTER du contenu? → Ou exactement? (fin, apres une section, etc.)
+- MODIFIER du contenu? → Quel texte specifique doit changer?
+- SUPPRIMER du contenu? → Quelle partie exactement?
+- REMPLACER tout? → Seulement si explicitement demande!
+
+ETAPE 4: CHOISIR LA BONNE COMMANDE
+
+1. AJOUTER a la fin du document:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Le texte a ajouter"}}]
+→ Utilise quand: "ajoute une conclusion", "ajoute a la fin", "ecris la suite"
+
+2. REMPLACER un texte specifique par un autre:
+[REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"texte a trouver", "replace":"nouveau texte"}}]
+→ Utilise quand: "change X par Y", "remplace X par Y", "modifie le titre", "corrige"
+
+3. INSERER apres un texte specifique:
+[INSERT_AFTER:{{"file_id":"{document['id']}", "after":"texte existant", "content":"texte a inserer"}}]
+→ Utilise quand: "ajoute apres le titre", "insere apres la section X", "ajoute sous..."
+
+4. SUPPRIMER un texte:
+[DELETE_TEXT:{{"file_id":"{document['id']}", "text":"texte a supprimer"}}]
+→ Utilise quand: "supprime", "enleve", "retire", "efface"
+
+5. REMPLACER TOUT le document (ATTENTION - utiliser rarement!):
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu complet"}}]
+→ Utilise UNIQUEMENT quand: "reecris tout", "remplace tout le document", "nouveau document"
+
+=== EXEMPLES D'APPLICATION ===
+
+**EXEMPLE 1: Ajouter une section**
+Document actuel: "Introduction\\n\\nCeci est mon projet."
+Demande: "Ajoute une section conclusion"
+ANALYSE: L'utilisateur veut ajouter a la fin, pas remplacer
+COMMANDE: [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"\\n\\nConclusion\\n\\nEn conclusion, ce projet..."}}]
+
+**EXEMPLE 2: Modifier un titre**
+Document actuel: "Mon Projet\\n\\nDescription du projet..."
+Demande: "Change le titre en 'Projet Innovation 2024'"
+ANALYSE: Remplacer seulement le titre, pas tout le document!
+COMMANDE: [REPLACE_TEXT:{{"file_id":"...", "find":"Mon Projet", "replace":"Projet Innovation 2024"}}]
+
+**EXEMPLE 3: Ajouter du contenu apres une section**
+Document actuel: "Introduction\\n\\nPremiere partie\\n\\nContenu..."
+Demande: "Ajoute une note apres l'introduction"
+ANALYSE: Inserer apres "Introduction", pas a la fin
+COMMANDE: [INSERT_AFTER:{{"file_id":"...", "after":"Introduction", "content":"\\n\\nNote importante: ..."}}]
+
+**EXEMPLE 4: Corriger une faute**
+Document actuel: "Le projet et tres important"
+Demande: "Corrige 'et' en 'est'"
+ANALYSE: Simple remplacement de mot
+COMMANDE: [REPLACE_TEXT:{{"file_id":"...", "find":"et tres", "replace":"est tres"}}]
+
+**EXEMPLE 5: Supprimer un paragraphe**
+Document actuel: "Intro\\n\\nParagraphe a garder\\n\\nParagraphe inutile\\n\\nConclusion"
+Demande: "Supprime le paragraphe inutile"
+ANALYSE: Supprimer seulement cette partie
+COMMANDE: [DELETE_TEXT:{{"file_id":"...", "text":"\\n\\nParagraphe inutile"}}]
+
+=== CE QU'IL NE FAUT JAMAIS FAIRE ===
+
+INTERDIT: Utiliser "replace" pour modifier juste un titre
+MAUVAIS: [MODIFY_DOC:{{"action":"replace", "content":"Nouveau titre\\n\\n(et recopier tout le reste du doc)"}}]
+BON: [REPLACE_TEXT:{{"find":"Ancien titre", "replace":"Nouveau titre"}}]
+
+INTERDIT: Recopier tout le document pour une petite modification
+INTERDIT: Deviner le contenu du document - utilise ce qui est affiche ci-dessus"""
 
         # Build system prompt
         system_prompt = f"""Tu es un assistant vocal qui modifie le document "{document['name']}" ({doc_type}).
@@ -868,6 +1080,21 @@ MAUVAIS (ne fais pas ca):
         if '[MODIFY_CELLS:' in answer:
             modification_result = execute_cells_modification(answer, credentials)
             answer = remove_command_from_answer(answer, '[MODIFY_CELLS:')
+
+        # Handle text replacement in Docs
+        elif '[REPLACE_TEXT:' in answer:
+            modification_result = execute_replace_text(answer, credentials)
+            answer = remove_command_from_answer(answer, '[REPLACE_TEXT:')
+
+        # Handle text insertion after specific text
+        elif '[INSERT_AFTER:' in answer:
+            modification_result = execute_insert_after(answer, credentials)
+            answer = remove_command_from_answer(answer, '[INSERT_AFTER:')
+
+        # Handle text deletion
+        elif '[DELETE_TEXT:' in answer:
+            modification_result = execute_delete_text(answer, credentials)
+            answer = remove_command_from_answer(answer, '[DELETE_TEXT:')
 
         # Handle document modifications (append/replace)
         elif '[MODIFY_DOC:' in answer:
