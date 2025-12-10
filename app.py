@@ -698,75 +698,113 @@ def chat_edit():
             doc_instructions = f"""
 === METHODOLOGIE D'ANALYSE DU DOCUMENT EXCEL/SHEET ===
 
+***** REGLE FONDAMENTALE *****
+CHAQUE DONNEE = UNE CELLULE SEPAREE
+JAMAIS plusieurs informations dans une seule cellule!
+Si l'utilisateur dit "ajoute lundi 8 decembre, 12 utilisateurs, agent1 a 3, agent2 a 5"
+Tu dois creer PLUSIEURS cellules: une pour la date, une pour les utilisateurs, une pour chaque agent.
+*****************************
+
 ETAPE 1: COMPRENDRE LA STRUCTURE
 - Les COLONNES sont identifiees par des LETTRES (A, B, C, D...)
   → Une colonne = meme lettre, chiffres differents: A1, A2, A3 = colonne A
-  → Chaque colonne represente generalement UN TYPE de donnee (nom, date, montant, etc.)
+  → CHAQUE COLONNE = UN TYPE DE DONNEE UNIQUE (date, nom, montant, agent1, agent2, etc.)
 
 - Les LIGNES sont identifiees par des CHIFFRES (1, 2, 3, 4...)
   → Une ligne = meme chiffre, lettres differentes: A1, B1, C1 = ligne 1
-  → Chaque ligne represente generalement UN ENREGISTREMENT (une personne, une transaction, etc.)
+  → CHAQUE LIGNE = UN ENREGISTREMENT (une date, une personne, une transaction)
 
-ETAPE 2: IDENTIFIER LES PATTERNS
-Avant de traiter une demande, tu DOIS analyser mentalement:
+ETAPE 2: IDENTIFIER LES PATTERNS (CRITIQUE!)
+Avant TOUTE action, tu DOIS analyser:
 
-1. LIGNE D'EN-TETE (generalement ligne 1):
-   - Quels sont les titres de colonnes?
-   - Que represente chaque colonne?
-   - Exemple: A1=Nom, B1=Age, C1=Ville → La colonne A contient des noms, B des ages, C des villes
+1. LIGNE D'EN-TETE (ligne 1 generalement):
+   - Liste EXACTE des colonnes: A=?, B=?, C=?, D=?, etc.
+   - Exemple: A1=Date, B1=Utilisateurs, C1=Friday, D1=Campagne, E1=Juridique
+   - MEMORISE cet ordre, tu DOIS le respecter!
 
-2. STRUCTURE DES DONNEES:
-   - A partir de quelle ligne commencent les donnees? (souvent ligne 2)
-   - Combien de colonnes sont utilisees?
-   - Y a-t-il des colonnes de calcul/formules?
+2. STRUCTURE DE CHAQUE COLONNE:
+   - Colonne A: quel type de donnee? (dates? noms?)
+   - Colonne B: quel type? (nombres? texte?)
+   - Colonne C, D, E...: pareil pour chaque colonne
+   - CHAQUE colonne a UN SEUL type de donnee
 
-3. LOGIQUE DU DOCUMENT:
-   - Quel est le but de ce tableau? (suivi de budget, liste de contacts, inventaire, etc.)
-   - Comment les donnees sont-elles organisees? (chronologique, alphabetique, par categorie)
-   - Y a-t-il des totaux, des moyennes, des sections?
+3. DERNIERE LIGNE DE DONNEES:
+   - Quelle est la derniere ligne remplie? (ex: ligne 10)
+   - La nouvelle ligne sera donc la suivante (ex: ligne 11)
 
-ETAPE 3: TRAITER LA DEMANDE UTILISATEUR
-Une fois la structure comprise:
+ETAPE 3: AJOUTER UNE NOUVELLE LIGNE
+C'est ici que tu dois etre TRES RIGOUREUX:
 
-1. LOCALISER les cellules concernees:
-   - "Change l'age de Marie" → Trouver la ligne ou le nom est "Marie", puis la colonne "Age"
-   - "Ajoute un nouveau produit" → Trouver la derniere ligne de donnees, ajouter en dessous
+1. IDENTIFIER la nouvelle ligne:
+   - Si derniere donnee en ligne 10 → nouvelle ligne = 11
+   - Si derniere donnee en ligne 5 → nouvelle ligne = 6
 
-2. DETERMINER l'action:
-   - Modifier une cellule existante → MODIFY_CELLS
-   - Ajouter une nouvelle ligne → MODIFY_DOC avec append
+2. MAPPER chaque info de l'utilisateur a une colonne:
+   - L'utilisateur dit "lundi 8 decembre" → c'est une DATE → colonne A (si A=Date)
+   - L'utilisateur dit "12 utilisateurs" → c'est un NOMBRE D'UTILISATEURS → colonne B (si B=Utilisateurs)
+   - L'utilisateur dit "Friday a eu 3" → c'est le compte de FRIDAY → colonne C (si C=Friday)
+   - L'utilisateur dit "Campagne a eu 2" → c'est le compte de CAMPAGNE → colonne D (si D=Campagne)
 
-3. RESPECTER la structure:
-   - Ajouter les donnees dans le bon ordre de colonnes
-   - Utiliser le meme format que les donnees existantes
+3. CREER une cellule pour CHAQUE donnee:
+   - A11 = "Lundi 8 decembre"
+   - B11 = "12"
+   - C11 = "3"
+   - D11 = "2"
+   JAMAIS: A11 = "Lundi 8 decembre, 12 utilisateurs, Friday 3, Campagne 2" ← INTERDIT!
 
 {sheet_display}
 
 === COMMANDES DISPONIBLES ===
 
-Pour MODIFIER des cellules specifiques:
-[MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"nouvelle valeur"}}, {{"cell":"B2", "value":"autre valeur"}}]}}]
+POUR AJOUTER UNE NOUVELLE LIGNE (methode recommandee):
+Utilise MODIFY_CELLS avec TOUTES les cellules de la nouvelle ligne:
+[MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A11", "value":"date"}}, {{"cell":"B11", "value":"nb_users"}}, {{"cell":"C11", "value":"agent1"}}, {{"cell":"D11", "value":"agent2"}}]}}]
 
-Pour AJOUTER une nouvelle ligne a la fin:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"valeur_col_A\\tvaleur_col_B\\tvaleur_col_C"}}]
-(Les colonnes sont separees par \\t, les lignes par \\n)
+POUR MODIFIER une cellule existante:
+[MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"B5", "value":"nouvelle valeur"}}]}}]
 
-=== EXEMPLES D'APPLICATION ===
+=== EXEMPLES DETAILLES ===
 
-Scenario: Tableau avec A=Nom, B=Age, C=Ville
-Donnees: A2=Jean, B2=25, C2=Paris | A3=Marie, B3=30, C3=Lyon
+**EXEMPLE 1: Tableau de suivi d'agents**
+Structure: A=Date, B=Total Users, C=Friday, D=Campagne, E=Juridique
+Derniere ligne: 5 (A5=Vendredi 6 dec, B5=10, C5=2, D5=3, E5=5)
 
-Demande: "Change l'age de Marie a 32"
-Analyse: Marie est en ligne 3, Age est en colonne B → modifier B3
-Action: [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"B3", "value":"32"}}]}}]
+Demande utilisateur: "Ajoute lundi 8 decembre, on avait 12 utilisateurs, Friday a eu 1, Campagne a eu 1, Juridique a eu 1"
 
-Demande: "Ajoute Pierre, 28 ans, de Marseille"
-Analyse: Nouvelle personne, derniere ligne est 3 → ajouter ligne 4, respecter ordre A=Nom, B=Age, C=Ville
-Action: [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"Pierre\\t28\\tMarseille"}}]
+ANALYSE:
+- Nouvelle ligne = 6
+- "lundi 8 decembre" → Date → A6
+- "12 utilisateurs" → Total Users → B6
+- "Friday a eu 1" → Friday → C6
+- "Campagne a eu 1" → Campagne → D6
+- "Juridique a eu 1" → Juridique → E6
 
-Demande: "Mets a jour la ville de Jean en Bordeaux"
-Analyse: Jean est en ligne 2, Ville est en colonne C → modifier C2
-Action: [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"C2", "value":"Bordeaux"}}]}}]"""
+COMMANDE CORRECTE:
+[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Lundi 8 decembre"}}, {{"cell":"B6", "value":"12"}}, {{"cell":"C6", "value":"1"}}, {{"cell":"D6", "value":"1"}}, {{"cell":"E6", "value":"1"}}]}}]
+
+COMMANDE INCORRECTE (NE FAIS JAMAIS CA):
+[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Lundi 8 decembre, 12 utilisateurs, Friday 1, Campagne 1, Juridique 1"}}]}}]
+
+**EXEMPLE 2: Modifier une seule valeur**
+Demande: "Change le nombre d'utilisateurs du vendredi 6 a 15"
+
+ANALYSE:
+- Vendredi 6 dec est en ligne 5
+- Utilisateurs est en colonne B
+- Donc modifier B5
+
+COMMANDE:
+[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"B5", "value":"15"}}]}}]
+
+**EXEMPLE 3: Ajouter plusieurs lignes**
+Demande: "Ajoute mardi 9 avec 8 users (Friday 2, Campagne 1) et mercredi 10 avec 10 users (Friday 3, Campagne 2)"
+
+ANALYSE:
+- Ligne 6: mardi 9
+- Ligne 7: mercredi 10
+
+COMMANDE:
+[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Mardi 9 decembre"}}, {{"cell":"B6", "value":"8"}}, {{"cell":"C6", "value":"2"}}, {{"cell":"D6", "value":"1"}}, {{"cell":"A7", "value":"Mercredi 10 decembre"}}, {{"cell":"B7", "value":"10"}}, {{"cell":"C7", "value":"3"}}, {{"cell":"D7", "value":"2"}}]}}]"""
 
         elif 'presentation' in mime_type:
             doc_type = 'Google Slides'
