@@ -722,15 +722,25 @@ Pour remplacer tout le contenu:
 [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu"}}]"""
 
         # Build system prompt
-        system_prompt = f"""Tu es un assistant qui aide a modifier le document "{document['name']}" ({doc_type}).
+        system_prompt = f"""Tu es un assistant vocal qui modifie le document "{document['name']}" ({doc_type}).
 
 {doc_instructions}
 
-REGLES:
-1. Analyse ce que l'utilisateur demande
-2. Ajoute la commande appropriee A LA FIN de ta reponse
-3. La commande sera executee automatiquement (l'utilisateur ne la voit pas)
-4. Reponds de facon conversationnelle et confirme ce que tu fais"""
+REGLES IMPORTANTES:
+1. Fais le travail IMMEDIATEMENT en ajoutant la commande a la fin
+2. APRES avoir fait le travail, dis SIMPLEMENT que c'est fait (ex: "C'est fait", "Voila", "J'ai mis a jour")
+3. NE DIS JAMAIS "je vais faire" ou "je vais ajouter" - FAIS-LE d'abord puis confirme
+4. Reponses COURTES (1-2 phrases max) car elles seront lues a voix haute
+5. Parle naturellement comme a l'oral
+
+EXEMPLES DE BONNES REPONSES:
+- "C'est fait, j'ai ajoute la section conclusion."
+- "Voila, les donnees sont mises a jour."
+- "OK, c'est ajoute."
+
+MAUVAIS (ne fais pas ca):
+- "Je vais ajouter une section conclusion..." (NON - fais-le d'abord!)
+- "Bien sur, je vais mettre a jour..." (NON - trop long!)"""
 
         # Call OpenAI
         from openai import OpenAI
@@ -996,6 +1006,49 @@ def list_editable_documents():
     except Exception as e:
         import traceback
         print(f"[list-editable-documents] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tts', methods=['POST'])
+def text_to_speech():
+    """Convert text to speech using OpenAI TTS API"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.json
+    if not data or 'text' not in data:
+        return jsonify({'error': 'No text provided'}), 400
+
+    text = data['text']
+    if not text.strip():
+        return jsonify({'error': 'Empty text'}), 400
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+        # Use "onyx" voice - deep male voice
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="onyx",
+            input=text,
+            response_format="mp3"
+        )
+
+        # Return audio as base64
+        import base64
+        audio_content = response.content
+        audio_base64 = base64.b64encode(audio_content).decode('utf-8')
+
+        return jsonify({
+            'status': 'success',
+            'audio': audio_base64,
+            'format': 'mp3'
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[tts] Error: {e}\n{traceback.format_exc()}", flush=True)
         return jsonify({'error': str(e)}), 500
 
 

@@ -428,9 +428,27 @@
                     <div id="editor-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem; background: var(--bg-light); border-radius: 8px; min-height: 200px;">
                     </div>
 
+                    <!-- Voice mode toggle -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: var(--bg-light); border-radius: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                        <label style="font-size: 0.85rem; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="voice-mode-toggle" onchange="toggleVoiceMode()" style="margin-right: 0.5rem;">
+                            Mode vocal (reponses a l'oral)
+                        </label>
+                    </div>
+
                     <!-- Input area -->
-                    <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                    <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
                         <input type="text" id="editor-input" placeholder="Ex: Ajoute une section conclusion..." style="flex: 1; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 0.95rem;" onkeypress="handleEditorKeyPress(event)">
+                        <button class="btn btn-secondary" onclick="toggleMicrophone()" id="mic-btn" title="Parler">
+                            <svg id="mic-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                            </svg>
+                        </button>
                         <button class="btn btn-primary" onclick="sendEditorMessage()" id="send-editor-btn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -967,12 +985,131 @@
                 messagesContainer.appendChild(assistantDiv);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
+                // Text-to-Speech if voice mode is enabled
+                if (voiceModeEnabled && data.answer) {
+                    speakText(data.answer);
+                }
+
             } catch (error) {
                 typingDiv.remove();
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'message error';
                 errorDiv.textContent = 'Erreur de connexion';
                 messagesContainer.appendChild(errorDiv);
+            }
+        }
+
+        // ========== Voice Functions ==========
+        let voiceModeEnabled = false;
+        let recognition = null;
+        let isListening = false;
+
+        function toggleVoiceMode() {
+            voiceModeEnabled = document.getElementById('voice-mode-toggle').checked;
+            console.log('Voice mode:', voiceModeEnabled);
+        }
+
+        function toggleMicrophone() {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+
+        function startListening() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('La reconnaissance vocale n\'est pas supportee par votre navigateur. Utilisez Chrome.');
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'fr-FR';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            const micBtn = document.getElementById('mic-btn');
+            const input = document.getElementById('editor-input');
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.style.background = '#ef4444';
+                micBtn.style.color = 'white';
+                input.placeholder = 'Parlez maintenant...';
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                input.value = transcript;
+
+                // Auto-send when speech ends (final result)
+                if (event.results[event.results.length - 1].isFinal) {
+                    setTimeout(() => {
+                        if (input.value.trim()) {
+                            sendEditorMessage();
+                        }
+                    }, 500);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                stopListening();
+                if (event.error === 'not-allowed') {
+                    alert('Acces au microphone refuse. Autorisez l\'acces dans les parametres du navigateur.');
+                }
+            };
+
+            recognition.onend = () => {
+                stopListening();
+            };
+
+            recognition.start();
+        }
+
+        function stopListening() {
+            isListening = false;
+            const micBtn = document.getElementById('mic-btn');
+            const input = document.getElementById('editor-input');
+
+            micBtn.style.background = '';
+            micBtn.style.color = '';
+            input.placeholder = 'Ex: Ajoute une section conclusion...';
+
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+
+        async function speakText(text) {
+            // Clean text - remove HTML and special characters
+            const cleanText = text
+                .replace(/<[^>]*>/g, '')
+                .replace(/&#\d+;/g, '')
+                .replace(/\*\*/g, '')
+                .trim();
+
+            if (!cleanText) return;
+
+            try {
+                const response = await fetch('/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: cleanText })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.audio) {
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    audio.play();
+                }
+            } catch (error) {
+                console.error('TTS error:', error);
             }
         }
     </script>
