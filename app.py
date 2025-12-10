@@ -803,7 +803,7 @@ def create_document():
 
 @app.route('/list-editable-documents')
 def list_editable_documents():
-    """List Google Docs that can be edited"""
+    """List Google Docs, Sheets and Slides that can be edited"""
     if not is_authenticated():
         return jsonify({'error': 'Not authenticated'}), 401
 
@@ -814,15 +814,23 @@ def list_editable_documents():
 
         drive_service = DriveService(credentials)
 
-        # List only Google Docs (editable)
+        # List Google Docs, Sheets and Slides (all editable)
         all_files = []
         page_token = None
+
+        # Query for all three document types
+        mime_types = [
+            "mimeType='application/vnd.google-apps.document'",
+            "mimeType='application/vnd.google-apps.spreadsheet'",
+            "mimeType='application/vnd.google-apps.presentation'"
+        ]
+        query = f"({' or '.join(mime_types)}) and trashed=false"
 
         while True:
             results = drive_service.service.files().list(
                 pageSize=100,
                 fields="nextPageToken, files(id, name, mimeType, modifiedTime, webViewLink)",
-                q="mimeType='application/vnd.google-apps.document' and trashed=false",
+                q=query,
                 orderBy="modifiedTime desc",
                 pageToken=page_token
             ).execute()
