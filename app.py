@@ -540,20 +540,89 @@ def execute_agent_modification(answer: str, credentials) -> dict:
         return {'status': 'error', 'message': str(e)}
 
 
+def remove_command_from_answer(answer: str, marker: str) -> str:
+    """Remove a command block from the answer by properly matching braces"""
+    start_idx = answer.find(marker)
+    if start_idx == -1:
+        return answer
+
+    # Find the end of the command by counting braces
+    json_start = start_idx + len(marker)
+    brace_count = 0
+    end_idx = json_start
+    in_string = False
+    escape_next = False
+
+    for i, char in enumerate(answer[json_start:], start=json_start):
+        if escape_next:
+            escape_next = False
+            continue
+        if char == '\\':
+            escape_next = True
+            continue
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == '{':
+            brace_count += 1
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                # Find the closing ]
+                end_idx = i + 1
+                if end_idx < len(answer) and answer[end_idx] == ']':
+                    end_idx += 1
+                break
+
+    # Remove the command from the answer
+    cleaned = answer[:start_idx] + answer[end_idx:]
+    return cleaned.strip()
+
+
 def execute_cells_modification(answer: str, credentials) -> dict:
     """Execute cell-specific modifications for Google Sheets"""
-    import re
     import json
 
     try:
-        # Parse the command: [MODIFY_CELLS:{"file_id":"...", "updates":[{"cell":"A1", "value":"..."}]}]
-        match = re.search(r'\[MODIFY_CELLS:(\{.*?\})\]', answer, re.DOTALL)
-        if not match:
+        # Find the start of the command
+        start_marker = '[MODIFY_CELLS:'
+        start_idx = answer.find(start_marker)
+        if start_idx == -1:
             print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
             return None
 
-        command_str = match.group(1)
-        print(f"[execute_cells_modification] Parsing: {command_str[:200]}...", flush=True)
+        # Find the JSON by counting braces
+        json_start = start_idx + len(start_marker)
+        brace_count = 0
+        json_end = json_start
+        in_string = False
+        escape_next = False
+
+        for i, char in enumerate(answer[json_start:], start=json_start):
+            if escape_next:
+                escape_next = False
+                continue
+            if char == '\\':
+                escape_next = True
+                continue
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    json_end = i + 1
+                    break
+
+        command_str = answer[json_start:json_end]
+        print(f"[execute_cells_modification] Extracted JSON: {command_str}", flush=True)
+
         command = json.loads(command_str)
 
         file_id = command.get('file_id')
@@ -571,6 +640,7 @@ def execute_cells_modification(answer: str, credentials) -> dict:
 
     except json.JSONDecodeError as e:
         print(f"[execute_cells_modification] JSON parse error: {e}", flush=True)
+        print(f"[execute_cells_modification] Raw string: {command_str}", flush=True)
         return {'status': 'error', 'message': f'Format de commande invalide: {e}'}
     except Exception as e:
         import traceback
@@ -682,7 +752,6 @@ REGLES:
         )
 
         answer = response.choices[0].message.content
-        import re
 
         # Check for modification commands
         modification_result = None
@@ -690,12 +759,12 @@ REGLES:
         # Handle cell-specific updates for Sheets
         if '[MODIFY_CELLS:' in answer:
             modification_result = execute_cells_modification(answer, credentials)
-            answer = re.sub(r'\[MODIFY_CELLS:\{.*?\}\]', '', answer, flags=re.DOTALL).strip()
+            answer = remove_command_from_answer(answer, '[MODIFY_CELLS:')
 
         # Handle document modifications (append/replace)
         elif '[MODIFY_DOC:' in answer:
             modification_result = execute_agent_modification(answer, credentials)
-            answer = re.sub(r'\[MODIFY_DOC:\{.*?\}\]', '', answer, flags=re.DOTALL).strip()
+            answer = remove_command_from_answer(answer, '[MODIFY_DOC:')
 
         return jsonify({
             'answer': answer,
