@@ -540,6 +540,44 @@ def execute_agent_modification(answer: str, credentials) -> dict:
         return {'status': 'error', 'message': str(e)}
 
 
+def execute_cells_modification(answer: str, credentials) -> dict:
+    """Execute cell-specific modifications for Google Sheets"""
+    import re
+    import json
+
+    try:
+        # Parse the command: [MODIFY_CELLS:{"file_id":"...", "updates":[{"cell":"A1", "value":"..."}]}]
+        match = re.search(r'\[MODIFY_CELLS:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
+            return None
+
+        command_str = match.group(1)
+        print(f"[execute_cells_modification] Parsing: {command_str[:200]}...", flush=True)
+        command = json.loads(command_str)
+
+        file_id = command.get('file_id')
+        updates = command.get('updates', [])
+
+        if not file_id or not updates:
+            return {'status': 'error', 'message': 'Missing file_id or updates'}
+
+        print(f"[execute_cells_modification] Updating {len(updates)} cells in {file_id}", flush=True)
+
+        drive_service = DriveService(credentials)
+        result = drive_service.update_sheet_cells(file_id, updates)
+
+        return result
+
+    except json.JSONDecodeError as e:
+        print(f"[execute_cells_modification] JSON parse error: {e}", flush=True)
+        return {'status': 'error', 'message': f'Format de commande invalide: {e}'}
+    except Exception as e:
+        import traceback
+        print(f"[execute_cells_modification] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
 @app.route('/chat-edit', methods=['POST'])
 def chat_edit():
     """Chat endpoint for editing a specific pre-selected document"""
@@ -559,38 +597,70 @@ def chat_edit():
         if not credentials:
             return jsonify({'error': 'Invalid credentials'}), 401
 
-        # Determine document type
+        drive_service = DriveService(credentials)
         mime_type = document.get('mimeType', '')
+
+        # Determine document type and build appropriate prompt
         if 'spreadsheet' in mime_type:
             doc_type = 'Google Sheet'
-            doc_instructions = """Pour modifier cette feuille de calcul:
-- Utilise le format: colonnes separees par \\t (tabulation), lignes par \\n
-- Exemple: "Colonne1\\tColonne2\\nValeur1\\tValeur2" """
+
+            # Read current sheet content
+            sheet_content = drive_service.get_sheet_content(document['id'])
+            values = sheet_content.get('values', [])
+
+            # Format sheet content for the AI
+            if values:
+                # Create a visual representation with cell references
+                sheet_display = "CONTENU ACTUEL DE LA FEUILLE:\n"
+                sheet_display += "```\n"
+                for row_idx, row in enumerate(values[:50], start=1):  # Limit to 50 rows
+                    row_str = f"Ligne {row_idx}: "
+                    for col_idx, cell in enumerate(row):
+                        col_letter = chr(65 + col_idx) if col_idx < 26 else f"A{chr(65 + col_idx - 26)}"
+                        row_str += f"[{col_letter}{row_idx}={cell}] "
+                    sheet_display += row_str.strip() + "\n"
+                sheet_display += "```\n"
+                if len(values) > 50:
+                    sheet_display += f"... et {len(values) - 50} lignes supplementaires\n"
+            else:
+                sheet_display = "La feuille est vide.\n"
+
+            doc_instructions = f"""{sheet_display}
+
+Pour modifier des cellules specifiques, utilise la commande:
+[MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"nouvelle valeur"}}, {{"cell":"B2", "value":"autre valeur"}}]}}]
+
+Pour ajouter des lignes a la fin:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"col1\\tcol2\\nval1\\tval2"}}]
+
+EXEMPLES:
+- "Change la cellule B3" -> [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"B3", "value":"nouveau"}}]}}]
+- "Mets 100 dans C5" -> [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"C5", "value":"100"}}]}}]
+- "Ajoute une ligne avec Jean, 25, Paris" -> [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"Jean\\t25\\tParis"}}]"""
+
         elif 'presentation' in mime_type:
             doc_type = 'Google Slides'
-            doc_instructions = """Pour ajouter une diapositive:
-- Le contenu sera ajoute comme nouvelle slide
-- Premiere ligne = titre, reste = contenu"""
+            doc_instructions = f"""Pour ajouter une diapositive:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Titre\\n\\nContenu de la slide"}}]"""
+
         else:
             doc_type = 'Google Doc'
-            doc_instructions = """Pour modifier ce document:
-- Le contenu sera ajoute a la fin du document
-- Tu peux utiliser du texte simple"""
+            doc_instructions = f"""Pour ajouter du contenu a la fin:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Le texte a ajouter"}}]
 
-        # Build system prompt for document editing
+Pour remplacer tout le contenu:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu"}}]"""
+
+        # Build system prompt
         system_prompt = f"""Tu es un assistant qui aide a modifier le document "{document['name']}" ({doc_type}).
 
 {doc_instructions}
 
-IMPORTANT: Quand l'utilisateur te demande de modifier le document, tu DOIS:
-1. Generer le contenu demande
-2. Ajouter cette commande A LA FIN de ta reponse: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"LE_CONTENU_ICI"}}]
-
-Actions disponibles:
-- "append" = ajouter a la fin (defaut)
-- "replace" = remplacer tout le contenu
-
-Reponds de facon conversationnelle. Confirme ce que tu fais."""
+REGLES:
+1. Analyse ce que l'utilisateur demande
+2. Ajoute la commande appropriee A LA FIN de ta reponse
+3. La commande sera executee automatiquement (l'utilisateur ne la voit pas)
+4. Reponds de facon conversationnelle et confirme ce que tu fais"""
 
         # Call OpenAI
         from openai import OpenAI
@@ -612,13 +682,19 @@ Reponds de facon conversationnelle. Confirme ce que tu fais."""
         )
 
         answer = response.choices[0].message.content
+        import re
 
-        # Check for modification command
+        # Check for modification commands
         modification_result = None
-        if '[MODIFY_DOC:' in answer:
+
+        # Handle cell-specific updates for Sheets
+        if '[MODIFY_CELLS:' in answer:
+            modification_result = execute_cells_modification(answer, credentials)
+            answer = re.sub(r'\[MODIFY_CELLS:\{.*?\}\]', '', answer, flags=re.DOTALL).strip()
+
+        # Handle document modifications (append/replace)
+        elif '[MODIFY_DOC:' in answer:
             modification_result = execute_agent_modification(answer, credentials)
-            # Clean the answer
-            import re
             answer = re.sub(r'\[MODIFY_DOC:\{.*?\}\]', '', answer, flags=re.DOTALL).strip()
 
         return jsonify({

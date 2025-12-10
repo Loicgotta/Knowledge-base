@@ -904,6 +904,55 @@ class DriveService:
             print(f"[get_sheet_content] Error: {e}", flush=True)
             return {'status': 'error', 'message': str(e), 'values': []}
 
+    def update_sheet_cells(self, file_id: str, updates: list) -> Dict:
+        """
+        Update specific cells in a Google Sheet
+
+        Args:
+            file_id: The ID of the Google Sheet
+            updates: List of cell updates [{"cell": "A1", "value": "new value"}, ...]
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Prepare batch update data
+            data = []
+            for update in updates:
+                cell = update.get('cell', '')
+                value = update.get('value', '')
+                if cell:
+                    data.append({
+                        'range': cell,
+                        'values': [[value]]
+                    })
+
+            if not data:
+                return {'status': 'error', 'message': 'No valid updates provided'}
+
+            body = {
+                'valueInputOption': 'USER_ENTERED',
+                'data': data
+            }
+
+            result = self.sheets_service.spreadsheets().values().batchUpdate(
+                spreadsheetId=file_id,
+                body=body
+            ).execute()
+
+            updated_cells = result.get('totalUpdatedCells', 0)
+            print(f"[update_sheet_cells] Updated {updated_cells} cells", flush=True)
+            return {
+                'status': 'success',
+                'message': f'{updated_cells} cellule(s) mise(s) a jour',
+                'updated_cells': updated_cells
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[update_sheet_cells] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e)}
+
     # ============== Google Slides Methods ==============
 
     def update_google_slides(self, file_id: str, updates: list) -> Dict:
