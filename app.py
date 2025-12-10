@@ -681,7 +681,7 @@ def chat_edit():
             # Format sheet content for the AI
             if values:
                 # Create a visual representation with cell references
-                sheet_display = "CONTENU ACTUEL DE LA FEUILLE:\n"
+                sheet_display = "DONNEES DE LA FEUILLE:\n"
                 sheet_display += "```\n"
                 for row_idx, row in enumerate(values[:50], start=1):  # Limit to 50 rows
                     row_str = f"Ligne {row_idx}: "
@@ -695,18 +695,78 @@ def chat_edit():
             else:
                 sheet_display = "La feuille est vide.\n"
 
-            doc_instructions = f"""{sheet_display}
+            doc_instructions = f"""
+=== METHODOLOGIE D'ANALYSE DU DOCUMENT EXCEL/SHEET ===
 
-Pour modifier des cellules specifiques, utilise la commande:
+ETAPE 1: COMPRENDRE LA STRUCTURE
+- Les COLONNES sont identifiees par des LETTRES (A, B, C, D...)
+  → Une colonne = meme lettre, chiffres differents: A1, A2, A3 = colonne A
+  → Chaque colonne represente generalement UN TYPE de donnee (nom, date, montant, etc.)
+
+- Les LIGNES sont identifiees par des CHIFFRES (1, 2, 3, 4...)
+  → Une ligne = meme chiffre, lettres differentes: A1, B1, C1 = ligne 1
+  → Chaque ligne represente generalement UN ENREGISTREMENT (une personne, une transaction, etc.)
+
+ETAPE 2: IDENTIFIER LES PATTERNS
+Avant de traiter une demande, tu DOIS analyser mentalement:
+
+1. LIGNE D'EN-TETE (generalement ligne 1):
+   - Quels sont les titres de colonnes?
+   - Que represente chaque colonne?
+   - Exemple: A1=Nom, B1=Age, C1=Ville → La colonne A contient des noms, B des ages, C des villes
+
+2. STRUCTURE DES DONNEES:
+   - A partir de quelle ligne commencent les donnees? (souvent ligne 2)
+   - Combien de colonnes sont utilisees?
+   - Y a-t-il des colonnes de calcul/formules?
+
+3. LOGIQUE DU DOCUMENT:
+   - Quel est le but de ce tableau? (suivi de budget, liste de contacts, inventaire, etc.)
+   - Comment les donnees sont-elles organisees? (chronologique, alphabetique, par categorie)
+   - Y a-t-il des totaux, des moyennes, des sections?
+
+ETAPE 3: TRAITER LA DEMANDE UTILISATEUR
+Une fois la structure comprise:
+
+1. LOCALISER les cellules concernees:
+   - "Change l'age de Marie" → Trouver la ligne ou le nom est "Marie", puis la colonne "Age"
+   - "Ajoute un nouveau produit" → Trouver la derniere ligne de donnees, ajouter en dessous
+
+2. DETERMINER l'action:
+   - Modifier une cellule existante → MODIFY_CELLS
+   - Ajouter une nouvelle ligne → MODIFY_DOC avec append
+
+3. RESPECTER la structure:
+   - Ajouter les donnees dans le bon ordre de colonnes
+   - Utiliser le meme format que les donnees existantes
+
+{sheet_display}
+
+=== COMMANDES DISPONIBLES ===
+
+Pour MODIFIER des cellules specifiques:
 [MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"nouvelle valeur"}}, {{"cell":"B2", "value":"autre valeur"}}]}}]
 
-Pour ajouter des lignes a la fin:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"col1\\tcol2\\nval1\\tval2"}}]
+Pour AJOUTER une nouvelle ligne a la fin:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"valeur_col_A\\tvaleur_col_B\\tvaleur_col_C"}}]
+(Les colonnes sont separees par \\t, les lignes par \\n)
 
-EXEMPLES:
-- "Change la cellule B3" -> [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"B3", "value":"nouveau"}}]}}]
-- "Mets 100 dans C5" -> [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"C5", "value":"100"}}]}}]
-- "Ajoute une ligne avec Jean, 25, Paris" -> [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"Jean\\t25\\tParis"}}]"""
+=== EXEMPLES D'APPLICATION ===
+
+Scenario: Tableau avec A=Nom, B=Age, C=Ville
+Donnees: A2=Jean, B2=25, C2=Paris | A3=Marie, B3=30, C3=Lyon
+
+Demande: "Change l'age de Marie a 32"
+Analyse: Marie est en ligne 3, Age est en colonne B → modifier B3
+Action: [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"B3", "value":"32"}}]}}]
+
+Demande: "Ajoute Pierre, 28 ans, de Marseille"
+Analyse: Nouvelle personne, derniere ligne est 3 → ajouter ligne 4, respecter ordre A=Nom, B=Age, C=Ville
+Action: [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"Pierre\\t28\\tMarseille"}}]
+
+Demande: "Mets a jour la ville de Jean en Bordeaux"
+Analyse: Jean est en ligne 2, Ville est en colonne C → modifier C2
+Action: [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"C2", "value":"Bordeaux"}}]}}]"""
 
         elif 'presentation' in mime_type:
             doc_type = 'Google Slides'
