@@ -540,6 +540,101 @@ def execute_agent_modification(answer: str, credentials) -> dict:
         return {'status': 'error', 'message': str(e)}
 
 
+@app.route('/chat-edit', methods=['POST'])
+def chat_edit():
+    """Chat endpoint for editing a specific pre-selected document"""
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.json
+    if not data or 'message' not in data or 'document' not in data:
+        return jsonify({'error': 'Missing message or document'}), 400
+
+    message = data['message']
+    document = data['document']  # {id, name, mimeType}
+    history = data.get('history', [])
+
+    try:
+        credentials = get_valid_credentials()
+        if not credentials:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        # Determine document type
+        mime_type = document.get('mimeType', '')
+        if 'spreadsheet' in mime_type:
+            doc_type = 'Google Sheet'
+            doc_instructions = """Pour modifier cette feuille de calcul:
+- Utilise le format: colonnes separees par \\t (tabulation), lignes par \\n
+- Exemple: "Colonne1\\tColonne2\\nValeur1\\tValeur2" """
+        elif 'presentation' in mime_type:
+            doc_type = 'Google Slides'
+            doc_instructions = """Pour ajouter une diapositive:
+- Le contenu sera ajoute comme nouvelle slide
+- Premiere ligne = titre, reste = contenu"""
+        else:
+            doc_type = 'Google Doc'
+            doc_instructions = """Pour modifier ce document:
+- Le contenu sera ajoute a la fin du document
+- Tu peux utiliser du texte simple"""
+
+        # Build system prompt for document editing
+        system_prompt = f"""Tu es un assistant qui aide a modifier le document "{document['name']}" ({doc_type}).
+
+{doc_instructions}
+
+IMPORTANT: Quand l'utilisateur te demande de modifier le document, tu DOIS:
+1. Generer le contenu demande
+2. Ajouter cette commande A LA FIN de ta reponse: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"LE_CONTENU_ICI"}}]
+
+Actions disponibles:
+- "append" = ajouter a la fin (defaut)
+- "replace" = remplacer tout le contenu
+
+Reponds de facon conversationnelle. Confirme ce que tu fais."""
+
+        # Call OpenAI
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # Add history
+        for msg in history[-6:]:
+            messages.append(msg)
+
+        messages.append({"role": "user", "content": message})
+
+        response = openai_client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=2000
+        )
+
+        answer = response.choices[0].message.content
+
+        # Check for modification command
+        modification_result = None
+        if '[MODIFY_DOC:' in answer:
+            modification_result = execute_agent_modification(answer, credentials)
+            # Clean the answer
+            import re
+            answer = re.sub(r'\[MODIFY_DOC:\{.*?\}\]', '', answer, flags=re.DOTALL).strip()
+
+        return jsonify({
+            'answer': answer,
+            'modification_result': modification_result
+        })
+
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Chat-edit error: {e}\n{error_trace}")
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
+
+
 @app.route('/stats')
 def get_stats():
     """Get indexing statistics"""
