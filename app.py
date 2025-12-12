@@ -1377,6 +1377,210 @@ def text_to_speech():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/voice-chat', methods=['POST'])
+def voice_chat():
+    """
+    Endpoint pour conversation vocale en temps réel
+    Reçoit: audio (fichier) + document + historique
+    Retourne: transcription + réponse texte + audio de la réponse
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Vérifier qu'on a un fichier audio
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    audio_file = request.files['audio']
+    document_json = request.form.get('document', '{}')
+    history_json = request.form.get('history', '[]')
+
+    try:
+        import json
+        import base64
+        import tempfile
+        from openai import OpenAI
+
+        document = json.loads(document_json)
+        history = json.loads(history_json)
+
+        client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+        # 1. SPEECH-TO-TEXT avec Whisper
+        # Sauvegarder le fichier audio temporairement
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_audio_path = temp_audio.name
+
+        # Transcrire avec Whisper
+        with open(temp_audio_path, 'rb') as audio:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio,
+                language="fr"
+            )
+
+        user_message = transcription.text
+        print(f"[voice-chat] Transcription: {user_message}", flush=True)
+
+        # Nettoyer le fichier temporaire
+        os.unlink(temp_audio_path)
+
+        # Si pas de document sélectionné, conversation simple
+        if not document or not document.get('id'):
+            # Conversation simple sans document
+            messages = [
+                {"role": "system", "content": "Tu es un assistant vocal. Réponds de manière concise car tes réponses seront lues à voix haute."}
+            ]
+            for msg in history[-10:]:
+                messages.append(msg)
+            messages.append({"role": "user", "content": user_message})
+
+            response = client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=500
+            )
+            ai_answer = response.choices[0].message.content
+            modification_result = None
+        else:
+            # 2. TRAITEMENT IA avec contexte document
+            credentials = get_valid_credentials()
+            if not credentials:
+                return jsonify({'error': 'Invalid credentials'}), 401
+
+            drive_service = DriveService(credentials)
+            mime_type = document.get('mimeType', '')
+
+            # Construire le prompt selon le type de document
+            if 'spreadsheet' in mime_type:
+                doc_type = 'Google Sheet'
+                sheet_content = drive_service.get_sheet_content(document['id'])
+                values = sheet_content.get('values', [])
+
+                if values:
+                    sheet_display = "DONNEES DE LA FEUILLE:\n```\n"
+                    for row_idx, row in enumerate(values[:50], start=1):
+                        row_str = f"Ligne {row_idx}: "
+                        for col_idx, cell in enumerate(row):
+                            col_letter = chr(65 + col_idx) if col_idx < 26 else f"A{chr(65 + col_idx - 26)}"
+                            row_str += f"[{col_letter}{row_idx}={cell}] "
+                        sheet_display += row_str.strip() + "\n"
+                    sheet_display += "```\n"
+                else:
+                    sheet_display = "La feuille est vide.\n"
+
+                doc_instructions = f"""
+***** REGLE FONDAMENTALE *****
+CHAQUE DONNEE = UNE CELLULE SEPAREE. JAMAIS plusieurs informations dans une seule cellule!
+*****************************
+
+{sheet_display}
+
+COMMANDE: [MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"xxx"}}]}}]
+"""
+
+            elif 'presentation' in mime_type:
+                doc_type = 'Google Slides'
+                doc_instructions = f"""Pour ajouter une diapositive:
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Titre\\n\\nContenu"}}]"""
+
+            else:
+                doc_type = 'Google Doc'
+                doc_content = drive_service.get_document_content(document['id'])
+                if len(doc_content) > 2000:
+                    doc_content = doc_content[:2000] + "\n... (tronqué)"
+
+                doc_instructions = f"""
+CONTENU ACTUEL:
+---
+{doc_content}
+---
+
+COMMANDES:
+- Remplacer: [REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"...", "replace":"..."}}]
+- Insérer après: [INSERT_AFTER:{{"file_id":"{document['id']}", "after":"...", "content":"..."}}]
+- Supprimer: [DELETE_TEXT:{{"file_id":"{document['id']}", "text":"..."}}]
+- Ajouter à la fin: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"..."}}]
+"""
+
+            system_prompt = f"""Tu es un assistant vocal qui modifie le document "{document['name']}" ({doc_type}).
+
+{doc_instructions}
+
+REGLES CONVERSATION VOCALE:
+1. Fais le travail IMMEDIATEMENT en ajoutant la commande à ta réponse
+2. APRES avoir fait le travail, confirme BRIEVEMENT (1 phrase max)
+3. NE DIS JAMAIS "je vais faire" - FAIS-LE puis confirme
+4. Réponses COURTES car elles seront lues à voix haute
+5. Sois naturel, comme dans une vraie conversation
+
+EXEMPLES:
+- "C'est fait, j'ai ajouté la ligne."
+- "Voilà, c'est modifié."
+- "OK, j'ai mis à jour les données."
+"""
+
+            messages = [{"role": "system", "content": system_prompt}]
+            for msg in history[-10:]:
+                messages.append(msg)
+            messages.append({"role": "user", "content": user_message})
+
+            response = client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
+            )
+
+            ai_answer = response.choices[0].message.content
+
+            # Exécuter les modifications
+            modification_result = None
+
+            if '[MODIFY_CELLS:' in ai_answer:
+                modification_result = execute_cells_modification(ai_answer, credentials)
+                ai_answer = remove_command_from_answer(ai_answer, '[MODIFY_CELLS:')
+            elif '[REPLACE_TEXT:' in ai_answer:
+                modification_result = execute_replace_text(ai_answer, credentials)
+                ai_answer = remove_command_from_answer(ai_answer, '[REPLACE_TEXT:')
+            elif '[INSERT_AFTER:' in ai_answer:
+                modification_result = execute_insert_after(ai_answer, credentials)
+                ai_answer = remove_command_from_answer(ai_answer, '[INSERT_AFTER:')
+            elif '[DELETE_TEXT:' in ai_answer:
+                modification_result = execute_delete_text(ai_answer, credentials)
+                ai_answer = remove_command_from_answer(ai_answer, '[DELETE_TEXT:')
+            elif '[MODIFY_DOC:' in ai_answer:
+                modification_result = execute_agent_modification(ai_answer, credentials)
+                ai_answer = remove_command_from_answer(ai_answer, '[MODIFY_DOC:')
+
+        print(f"[voice-chat] AI response: {ai_answer}", flush=True)
+
+        # 3. TEXT-TO-SPEECH avec voix alloy
+        tts_response = client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=ai_answer,
+            response_format="mp3"
+        )
+
+        audio_base64 = base64.b64encode(tts_response.content).decode('utf-8')
+
+        return jsonify({
+            'status': 'success',
+            'transcription': user_message,
+            'response': ai_answer,
+            'audio': audio_base64,
+            'modification_result': modification_result
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[voice-chat] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
 # ============== Error Handlers ==============
 
 @app.errorhandler(404)
