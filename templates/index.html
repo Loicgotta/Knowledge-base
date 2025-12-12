@@ -480,19 +480,19 @@
             <!-- Document name -->
             <div id="voice-doc-name" style="font-size: 0.9rem; opacity: 0.7; margin-bottom: 1rem;"></div>
 
-            <!-- Main voice indicator -->
-            <div id="voice-indicator" style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; transition: transform 0.3s, box-shadow 0.3s;">
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <!-- Main push-to-talk button -->
+            <button id="push-to-talk-btn" onclick="toggleVoiceRecording()" style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; transition: transform 0.2s, box-shadow 0.2s, background 0.2s;">
+                <svg id="ptt-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                     <line x1="12" y1="19" x2="12" y2="23"/>
                     <line x1="8" y1="23" x2="16" y2="23"/>
                 </svg>
-            </div>
+            </button>
 
             <!-- Status text -->
             <div id="voice-status" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
-                Preparation...
+                Appuyez pour parler
             </div>
 
             <!-- Transcription display -->
@@ -509,7 +509,7 @@
 
             <!-- Instructions -->
             <div style="position: absolute; bottom: 2rem; font-size: 0.85rem; opacity: 0.5;">
-                Parlez naturellement • L'agent repond automatiquement • Cliquez ✕ pour terminer
+                Appuyez pour parler • Appuyez pour envoyer • Cliquez ✕ pour terminer
             </div>
         </div>
     </div>
@@ -1121,12 +1121,15 @@
             }
         }
 
-        // ========== Continuous Voice Conversation ==========
+        // ========== Push-to-Talk Voice Conversation ==========
         let voiceConversationActive = false;
         let voiceMediaRecorder = null;
         let voiceAudioChunks = [];
         let voiceConversationHistory = [];
         let currentAudio = null;
+        let isRecording = false;
+        let isSpeaking = false;
+        let audioStream = null;
 
         function startVoiceConversation() {
             if (!selectedDocument) {
@@ -1140,13 +1143,17 @@
             document.getElementById('voice-history').innerHTML = '';
             voiceConversationHistory = [];
             voiceConversationActive = true;
+            isRecording = false;
+            isSpeaking = false;
 
-            // Start recording
-            startVoiceRecording();
+            // Reset UI to ready state
+            updateVoiceUI('ready');
         }
 
         function stopVoiceConversation() {
             voiceConversationActive = false;
+            isRecording = false;
+            isSpeaking = false;
 
             // Stop any playing audio
             if (currentAudio) {
@@ -1159,26 +1166,52 @@
                 voiceMediaRecorder.stop();
             }
 
+            // Stop audio stream
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+
             // Hide modal
             document.getElementById('voice-modal').style.display = 'none';
 
             // Reset UI
-            document.getElementById('voice-status').textContent = 'Preparation...';
+            document.getElementById('voice-status').textContent = 'Appuyez pour parler';
             document.getElementById('voice-transcription').textContent = '';
             document.getElementById('voice-response').style.display = 'none';
         }
 
-        async function startVoiceRecording() {
+        function toggleVoiceRecording() {
+            // If agent is speaking, stop it and start recording
+            if (isSpeaking && currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                isSpeaking = false;
+                document.getElementById('voice-response').style.display = 'none';
+                startRecording();
+                return;
+            }
+
+            // Toggle recording
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
             if (!voiceConversationActive) return;
 
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-                voiceMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                voiceMediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
                 voiceAudioChunks = [];
+                isRecording = true;
 
-                // Update UI - listening
-                updateVoiceUI('listening');
+                // Update UI - recording
+                updateVoiceUI('recording');
 
                 voiceMediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
@@ -1188,7 +1221,10 @@
 
                 voiceMediaRecorder.onstop = async () => {
                     // Stop all tracks
-                    stream.getTracks().forEach(track => track.stop());
+                    if (audioStream) {
+                        audioStream.getTracks().forEach(track => track.stop());
+                        audioStream = null;
+                    }
 
                     if (!voiceConversationActive) return;
 
@@ -1199,51 +1235,59 @@
                     if (audioBlob.size > 1000) {
                         await processVoiceInput(audioBlob);
                     } else {
-                        // Restart recording if no significant audio
-                        if (voiceConversationActive) {
-                            startVoiceRecording();
-                        }
+                        updateVoiceUI('ready');
                     }
                 };
 
                 voiceMediaRecorder.start();
 
-                // Auto-stop after 10 seconds of recording (or use silence detection)
-                setTimeout(() => {
-                    if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
-                        voiceMediaRecorder.stop();
-                    }
-                }, 10000);
-
             } catch (error) {
                 console.error('Error starting voice recording:', error);
                 alert('Impossible d\'acceder au microphone. Verifiez les permissions.');
-                stopVoiceConversation();
+                isRecording = false;
+                updateVoiceUI('ready');
+            }
+        }
+
+        function stopRecording() {
+            if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+                isRecording = false;
+                voiceMediaRecorder.stop();
             }
         }
 
         function updateVoiceUI(state) {
-            const indicator = document.getElementById('voice-indicator');
+            const btn = document.getElementById('push-to-talk-btn');
             const status = document.getElementById('voice-status');
 
             switch(state) {
-                case 'listening':
-                    indicator.style.transform = 'scale(1)';
-                    indicator.style.boxShadow = '0 0 0 0 rgba(102, 126, 234, 0.7)';
-                    indicator.style.animation = 'pulse 1.5s infinite';
-                    status.textContent = 'Je vous ecoute...';
+                case 'ready':
+                    btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    btn.style.transform = 'scale(1)';
+                    btn.style.boxShadow = 'none';
+                    btn.style.animation = 'none';
+                    status.textContent = 'Appuyez pour parler';
+                    break;
+                case 'recording':
+                    btn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                    btn.style.transform = 'scale(1.05)';
+                    btn.style.boxShadow = '0 0 0 0 rgba(239, 68, 68, 0.7)';
+                    btn.style.animation = 'pulse-red 1.5s infinite';
+                    status.textContent = 'Enregistrement... Appuyez pour envoyer';
                     break;
                 case 'processing':
-                    indicator.style.animation = 'none';
-                    indicator.style.transform = 'scale(0.9)';
-                    indicator.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.5)';
+                    btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                    btn.style.animation = 'none';
+                    btn.style.transform = 'scale(0.95)';
+                    btn.style.boxShadow = '0 0 30px rgba(245, 158, 11, 0.5)';
                     status.textContent = 'Traitement en cours...';
                     break;
                 case 'speaking':
-                    indicator.style.animation = 'none';
-                    indicator.style.transform = 'scale(1.1)';
-                    indicator.style.boxShadow = '0 0 50px rgba(118, 75, 162, 0.7)';
-                    status.textContent = 'L\'agent parle...';
+                    btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    btn.style.animation = 'none';
+                    btn.style.transform = 'scale(1.05)';
+                    btn.style.boxShadow = '0 0 30px rgba(16, 185, 129, 0.5)';
+                    status.textContent = 'L\'agent parle... Appuyez pour interrompre';
                     break;
             }
         }
@@ -1272,9 +1316,7 @@
                 if (data.error) {
                     console.error('Voice chat error:', data.error);
                     document.getElementById('voice-transcription').textContent = 'Erreur: ' + data.error;
-                    setTimeout(() => {
-                        if (voiceConversationActive) startVoiceRecording();
-                    }, 2000);
+                    updateVoiceUI('ready');
                     return;
                 }
 
@@ -1297,46 +1339,34 @@
 
                 // Play audio response
                 if (data.audio) {
+                    isSpeaking = true;
                     updateVoiceUI('speaking');
 
                     currentAudio = new Audio('data:audio/mp3;base64,' + data.audio);
 
                     currentAudio.onended = () => {
                         currentAudio = null;
+                        isSpeaking = false;
                         document.getElementById('voice-response').style.display = 'none';
-
-                        // Continue conversation - start recording again
-                        if (voiceConversationActive) {
-                            setTimeout(() => {
-                                startVoiceRecording();
-                            }, 500);
-                        }
+                        updateVoiceUI('ready');
                     };
 
                     currentAudio.onerror = () => {
                         console.error('Audio playback error');
-                        if (voiceConversationActive) {
-                            startVoiceRecording();
-                        }
+                        currentAudio = null;
+                        isSpeaking = false;
+                        updateVoiceUI('ready');
                     };
 
                     currentAudio.play();
                 } else {
-                    // No audio, continue recording
-                    if (voiceConversationActive) {
-                        startVoiceRecording();
-                    }
+                    updateVoiceUI('ready');
                 }
 
             } catch (error) {
                 console.error('Error processing voice:', error);
                 document.getElementById('voice-transcription').textContent = 'Erreur de connexion';
-
-                setTimeout(() => {
-                    if (voiceConversationActive) {
-                        startVoiceRecording();
-                    }
-                }, 2000);
+                updateVoiceUI('ready');
             }
         }
 
@@ -1357,13 +1387,18 @@
             historyDiv.scrollTop = historyDiv.scrollHeight;
         }
 
-        // Add CSS animation for pulse
+        // Add CSS animations
         const style = document.createElement('style');
         style.textContent = `
             @keyframes pulse {
                 0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
                 70% { box-shadow: 0 0 0 20px rgba(102, 126, 234, 0); }
                 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
+            }
+            @keyframes pulse-red {
+                0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
             }
         `;
         document.head.appendChild(style);
