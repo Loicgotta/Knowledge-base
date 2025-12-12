@@ -1032,25 +1032,44 @@ INTERDIT: Recopier tout le document pour une petite modification
 INTERDIT: Deviner le contenu du document - utilise ce qui est affiche ci-dessus"""
 
         # Build system prompt
-        system_prompt = f"""Tu es un assistant vocal qui modifie le document "{document['name']}" ({doc_type}).
+        system_prompt = f"""Tu es un assistant qui modifie le document "{document['name']}" ({doc_type}).
 
 {doc_instructions}
 
-REGLES IMPORTANTES:
-1. Fais le travail IMMEDIATEMENT en ajoutant la commande a la fin
-2. APRES avoir fait le travail, dis SIMPLEMENT que c'est fait (ex: "C'est fait", "Voila", "J'ai mis a jour")
-3. NE DIS JAMAIS "je vais faire" ou "je vais ajouter" - FAIS-LE d'abord puis confirme
-4. Reponses COURTES (1-2 phrases max) car elles seront lues a voix haute
-5. Parle naturellement comme a l'oral
+===== REGLES ABSOLUES - JAMAIS D'EXCEPTION =====
 
-EXEMPLES DE BONNES REPONSES:
-- "C'est fait, j'ai ajoute la section conclusion."
-- "Voila, les donnees sont mises a jour."
-- "OK, c'est ajoute."
+**REGLE 1 - TOUJOURS EXECUTER:**
+Quand l'utilisateur te demande de faire quelque chose, tu DOIS OBLIGATOIREMENT inclure la commande dans ta reponse.
+- Pas d'excuse, pas de "je ne peux pas", pas de "je vais essayer"
+- Si on te demande d'ajouter/modifier/supprimer → TU LE FAIS
+- La SEULE exception: si l'utilisateur dit "non", "laisse tomber", "c'est bon", "annule"
 
-MAUVAIS (ne fais pas ca):
-- "Je vais ajouter une section conclusion..." (NON - fais-le d'abord!)
-- "Bien sur, je vais mettre a jour..." (NON - trop long!)"""
+**REGLE 2 - JAMAIS MENTIR:**
+Tu ne dois JAMAIS dire "c'est fait" ou "j'ai modifie" si ta reponse NE CONTIENT PAS de commande.
+- Si ta reponse ne contient pas de commande [MODIFY_CELLS:...], [REPLACE_TEXT:...], etc. → tu n'as RIEN fait
+- Ne dis pas "j'ai ajoute" si tu n'as pas mis la commande
+- INTERDIT de confirmer une action sans avoir inclus la commande correspondante
+
+**REGLE 3 - STRUCTURE DE REPONSE:**
+Quand on te demande une tache:
+1. D'abord la commande: [MODIFY_CELLS:...] ou [REPLACE_TEXT:...] etc.
+2. Ensuite une confirmation courte: "C'est fait" / "Voila" / "OK"
+
+MAUVAIS (INTERDIT):
+User: "Ajoute lundi avec 12 utilisateurs"
+Assistant: "C'est fait, j'ai ajoute la ligne."
+→ INTERDIT car il n'y a pas de commande!
+
+BON:
+User: "Ajoute lundi avec 12 utilisateurs"
+Assistant: "[MODIFY_CELLS:{{...}}] C'est fait."
+→ CORRECT car la commande est presente
+
+**REGLE 4 - EN CAS DE DOUTE:**
+Si tu ne comprends pas exactement:
+- Pose une question pour clarifier
+- NE FAIS PAS de modification si tu n'es pas sur
+- NE DIS PAS "c'est fait" si tu n'as pas compris"""
 
         # Call OpenAI
         from openai import OpenAI
@@ -1509,17 +1528,45 @@ COMMANDES:
 
 {doc_instructions}
 
-REGLES CONVERSATION VOCALE:
-1. Fais le travail IMMEDIATEMENT en ajoutant la commande à ta réponse
-2. APRES avoir fait le travail, confirme BRIEVEMENT (1 phrase max)
-3. NE DIS JAMAIS "je vais faire" - FAIS-LE puis confirme
-4. Réponses COURTES car elles seront lues à voix haute
-5. Sois naturel, comme dans une vraie conversation
+===== REGLES ABSOLUES - JAMAIS D'EXCEPTION =====
 
-EXEMPLES:
-- "C'est fait, j'ai ajouté la ligne."
-- "Voilà, c'est modifié."
-- "OK, j'ai mis à jour les données."
+**REGLE 1 - TOUJOURS EXECUTER:**
+Quand l'utilisateur te demande de faire quelque chose, tu DOIS OBLIGATOIREMENT inclure la commande dans ta réponse.
+- Pas d'excuse, pas de "je ne peux pas", pas de "je vais essayer"
+- Si on te demande d'ajouter/modifier/supprimer → TU LE FAIS
+- La SEULE exception: si l'utilisateur dit "non", "laisse tomber", "c'est bon", "annule"
+
+**REGLE 2 - JAMAIS MENTIR:**
+Tu ne dois JAMAIS dire "c'est fait" ou "j'ai modifié" si ta réponse NE CONTIENT PAS de commande [MODIFY_CELLS:...], [REPLACE_TEXT:...], etc.
+- Si ta réponse ne contient pas de commande → tu n'as RIEN fait
+- Ne dis pas "j'ai ajouté" si tu n'as pas mis la commande
+- INTERDIT de confirmer une action sans avoir inclus la commande correspondante
+
+**REGLE 3 - STRUCTURE DE REPONSE:**
+Ta réponse doit TOUJOURS suivre ce format quand on te demande une tâche:
+1. D'abord la commande: [MODIFY_CELLS:...] ou [REPLACE_TEXT:...] etc.
+2. Ensuite UNE phrase de confirmation: "C'est fait" / "Voilà" / "OK"
+
+MAUVAIS EXEMPLE (INTERDIT):
+User: "Ajoute lundi 8 décembre avec 12 utilisateurs"
+Assistant: "C'est fait, j'ai ajouté la ligne."
+→ INTERDIT car il n'y a pas de commande!
+
+BON EXEMPLE:
+User: "Ajoute lundi 8 décembre avec 12 utilisateurs"
+Assistant: "[MODIFY_CELLS:{{...}}] C'est fait."
+→ CORRECT car la commande est présente
+
+**REGLE 4 - REPONSES COURTES:**
+- Maximum 1-2 phrases après la commande
+- Pas d'explications longues
+- Réponses naturelles pour lecture vocale
+
+**REGLE 5 - EN CAS DE DOUTE:**
+Si tu ne comprends pas exactement ce que l'utilisateur veut:
+- Pose une question courte pour clarifier
+- NE FAIS PAS de modification si tu n'es pas sûr
+- NE DIS PAS "c'est fait" si tu n'as pas compris
 """
 
             messages = [{"role": "system", "content": system_prompt}]
