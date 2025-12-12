@@ -1,249 +1,163 @@
 # Guide d'Intégration - Agent IA Google Docs/Sheets
 
-Ce guide explique comment intégrer l'agent IA de modification de documents Google (Docs, Sheets, Slides) à votre plateforme existante.
+Ce guide explique comment intégrer l'agent IA de modification de documents Google à votre plateforme existante.
 
 ---
 
 ## Table des matières
 
-1. [Prérequis](#1-prérequis)
-2. [Configuration Google Cloud Console](#2-configuration-google-cloud-console)
-3. [Installation des dépendances](#3-installation-des-dépendances)
-4. [Architecture de l'intégration](#4-architecture-de-lintégration)
-5. [Code d'authentification OAuth](#5-code-dauthentification-oauth)
-6. [Service de modification des documents](#6-service-de-modification-des-documents)
-7. [Fonctions d'exécution des commandes IA](#7-fonctions-dexécution-des-commandes-ia)
-8. [Prompts système pour l'IA](#8-prompts-système-pour-lia)
-9. [Intégration dans votre endpoint](#9-intégration-dans-votre-endpoint)
-10. [Exemple complet](#10-exemple-complet)
-11. [Format des commandes IA](#11-format-des-commandes-ia)
-12. [Dépannage](#12-dépannage)
+1. [Vue d'ensemble](#1-vue-densemble)
+2. [Prérequis](#2-prérequis)
+3. [Configuration Google Cloud](#3-configuration-google-cloud)
+4. [Code d'authentification OAuth](#4-code-dauthentification-oauth)
+5. [Service Google Drive](#5-service-google-drive)
+6. [Exécution des commandes IA](#6-exécution-des-commandes-ia)
+7. [Prompts système](#7-prompts-système)
+8. [Endpoint Chat (texte)](#8-endpoint-chat-texte)
+9. [Endpoint Voice (push-to-talk)](#9-endpoint-voice-push-to-talk)
+10. [Interface Frontend](#10-interface-frontend)
+11. [Variables d'environnement](#11-variables-denvironnement)
 
 ---
 
-## 1. Prérequis
+## 1. Vue d'ensemble
 
-- Python 3.8+
-- Un compte Google Cloud Platform
-- Une plateforme existante avec un système de sessions (Flask, FastAPI, Django, etc.)
-- Une clé API OpenAI (ou autre LLM)
+### Fonctionnalités
 
----
+- **Sélection de document** : L'utilisateur choisit un document Google (Docs, Sheets, Slides)
+- **Chat texte** : Modification du document via messages texte
+- **Conversation vocale** : Mode push-to-talk avec transcription Whisper et réponse TTS
+- **Modifications précises** : Remplacement de texte, insertion, suppression, modification de cellules
 
-## 2. Configuration Google Cloud Console
-
-### 2.1 Créer un projet
-
-1. Accédez à [Google Cloud Console](https://console.cloud.google.com/)
-2. Créez un nouveau projet ou sélectionnez un projet existant
-
-### 2.2 Activer les APIs
-
-Activez les APIs suivantes dans **APIs & Services > Library** :
-
-- Google Drive API
-- Google Docs API
-- Google Sheets API
-- Google Slides API
-
-### 2.3 Configurer l'écran de consentement OAuth
-
-1. Allez dans **APIs & Services > OAuth consent screen**
-2. Choisissez **External** (ou Internal si G Suite)
-3. Remplissez les informations :
-   - Nom de l'application
-   - Email de support
-   - Logo (optionnel)
-4. Ajoutez les **Scopes** suivants :
-   ```
-   openid
-   https://www.googleapis.com/auth/userinfo.email
-   https://www.googleapis.com/auth/userinfo.profile
-   https://www.googleapis.com/auth/drive
-   https://www.googleapis.com/auth/documents
-   https://www.googleapis.com/auth/spreadsheets
-   https://www.googleapis.com/auth/presentations
-   ```
-5. Ajoutez des utilisateurs de test si en mode "Testing"
-
-### 2.4 Créer les identifiants OAuth
-
-1. Allez dans **APIs & Services > Credentials**
-2. Cliquez sur **Create Credentials > OAuth client ID**
-3. Type d'application : **Web application**
-4. Ajoutez les **Authorized redirect URIs** :
-   - `http://localhost:5000/oauth2callback` (développement)
-   - `https://votre-domaine.com/oauth2callback` (production)
-5. Notez le **Client ID** et **Client Secret**
-
-### 2.5 Variables d'environnement
-
-Créez un fichier `.env` :
-
-```bash
-GOOGLE_CLIENT_ID=votre-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=votre-client-secret
-BASE_URL=http://localhost:5000
-OPENAI_API_KEY=votre-cle-openai
-FLASK_SECRET_KEY=une-cle-secrete-aleatoire
-```
-
----
-
-## 3. Installation des dépendances
-
-```bash
-pip install google-auth google-auth-oauthlib google-api-python-client flask python-dotenv openai
-```
-
-Ou ajoutez à votre `requirements.txt` :
-
-```
-google-auth>=2.0.0
-google-auth-oauthlib>=1.0.0
-google-api-python-client>=2.0.0
-flask>=2.0.0
-python-dotenv>=1.0.0
-openai>=1.0.0
-```
-
----
-
-## 4. Architecture de l'intégration
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        VOTRE PLATEFORME                         │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
-│  │   Frontend   │───▶│   Endpoint   │───▶│   OpenAI/LLM     │  │
-│  │  (Sélection  │    │  /chat-edit  │    │   (Génère les    │  │
-│  │   document)  │    │              │    │   commandes)     │  │
-│  └──────────────┘    └──────┬───────┘    └──────────────────┘  │
-│                             │                                   │
-│                             ▼                                   │
-│                    ┌──────────────────┐                        │
-│                    │ execute_modif()  │                        │
-│                    │ (Parse & Execute)│                        │
-│                    └────────┬─────────┘                        │
-│                             │                                   │
-│                             ▼                                   │
-│                    ┌──────────────────┐                        │
-│                    │  DriveService    │                        │
-│                    │  (API Google)    │                        │
-│                    └────────┬─────────┘                        │
-│                             │                                   │
-└─────────────────────────────┼───────────────────────────────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │   Google APIs    │
-                    │ Drive/Docs/Sheets│
-                    └──────────────────┘
+│  ┌─────────────┐     ┌─────────────────┐     ┌──────────────┐  │
+│  │  Frontend   │────▶│  /chat-edit     │────▶│   OpenAI     │  │
+│  │  (Texte)    │     │  /voice-chat    │     │   GPT-4      │  │
+│  └─────────────┘     └────────┬────────┘     └──────────────┘  │
+│                               │                                 │
+│                               ▼                                 │
+│                    ┌─────────────────────┐                     │
+│                    │  execute_modif()    │                     │
+│                    │  Parse les commands │                     │
+│                    └──────────┬──────────┘                     │
+│                               │                                 │
+│                               ▼                                 │
+│                    ┌─────────────────────┐                     │
+│                    │   DriveService      │                     │
+│                    │   (Google APIs)     │                     │
+│                    └──────────┬──────────┘                     │
+│                               │                                 │
+└───────────────────────────────┼─────────────────────────────────┘
+                                ▼
+                     ┌─────────────────────┐
+                     │    Google APIs      │
+                     │  Drive/Docs/Sheets  │
+                     └─────────────────────┘
 ```
-
-**Flux de données :**
-1. L'utilisateur sélectionne un document et envoie un message
-2. Votre endpoint construit le prompt avec le contenu du document
-3. L'IA génère une réponse avec une commande de modification
-4. La fonction `execute_modification()` parse et exécute la commande
-5. Le document Google est modifié via l'API
 
 ---
 
-## 5. Code d'authentification OAuth
+## 2. Prérequis
 
-Créez le fichier `google_auth.py` :
+- Python 3.8+
+- Compte Google Cloud Platform
+- Clé API OpenAI
+- Framework web (Flask, FastAPI, etc.)
+
+### Dépendances Python
+
+```bash
+pip install google-auth google-auth-oauthlib google-api-python-client openai flask python-dotenv
+```
+
+---
+
+## 3. Configuration Google Cloud
+
+### 3.1 Activer les APIs
+
+Dans Google Cloud Console, activez :
+- Google Drive API
+- Google Docs API
+- Google Sheets API
+- Google Slides API
+
+### 3.2 Créer les identifiants OAuth
+
+1. **APIs & Services > Credentials > Create Credentials > OAuth client ID**
+2. Type : **Web application**
+3. Redirect URIs :
+   - `http://localhost:5000/oauth2callback` (dev)
+   - `https://votre-domaine.com/oauth2callback` (prod)
+
+### 3.3 Configurer l'écran de consentement
+
+Ajoutez les scopes :
+```
+https://www.googleapis.com/auth/drive
+https://www.googleapis.com/auth/documents
+https://www.googleapis.com/auth/spreadsheets
+https://www.googleapis.com/auth/presentations
+```
+
+---
+
+## 4. Code d'authentification OAuth
 
 ```python
-"""
-Module d'authentification Google OAuth 2.0
-Gère le flow OAuth pour accéder à Drive, Docs, Sheets, Slides
-"""
+# google_auth.py
 
 import os
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 
-
-# === SCOPES - Permissions demandées à l'utilisateur ===
 SCOPES = [
-    'openid',
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/drive',              # Drive (lecture/écriture)
-    'https://www.googleapis.com/auth/documents',          # Google Docs
-    'https://www.googleapis.com/auth/spreadsheets',       # Google Sheets
-    'https://www.googleapis.com/auth/presentations',      # Google Slides
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/presentations',
 ]
 
-
 def get_google_client_config():
-    """Configuration OAuth depuis variables d'environnement"""
     return {
         "web": {
             "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
             "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [get_redirect_uri()],
+            "redirect_uris": [os.environ.get("BASE_URL") + "/oauth2callback"],
         }
     }
 
-
-def get_redirect_uri():
-    """URI de redirection après authentification"""
-    base_url = os.environ.get("BASE_URL", "http://localhost:5000")
-    return f"{base_url}/oauth2callback"
-
-
 def create_oauth_flow():
-    """Créer le flow OAuth"""
     return Flow.from_client_config(
         get_google_client_config(),
         scopes=SCOPES,
-        redirect_uri=get_redirect_uri()
+        redirect_uri=os.environ.get("BASE_URL") + "/oauth2callback"
     )
-
 
 def get_authorization_url():
-    """
-    Générer l'URL d'autorisation Google
-
-    Returns:
-        tuple: (authorization_url, state)
-        - authorization_url: URL vers laquelle rediriger l'utilisateur
-        - state: Token anti-CSRF à stocker en session
-    """
+    """Génère l'URL de connexion Google"""
     flow = create_oauth_flow()
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',      # Pour obtenir un refresh_token
-        prompt='consent'            # Force l'affichage du consentement
-    )
-    return authorization_url, state
-
+    url, state = flow.authorization_url(access_type='offline', prompt='consent')
+    return url, state
 
 def exchange_code_for_credentials(authorization_response, state):
-    """
-    Échanger le code d'autorisation contre des credentials
-
-    Args:
-        authorization_response: URL complète du callback (avec le code)
-        state: Token state stocké en session
-
-    Returns:
-        Credentials: Objet credentials Google
-    """
+    """Échange le code contre des credentials"""
     flow = create_oauth_flow()
     flow.state = state
     flow.fetch_token(authorization_response=authorization_response)
     return flow.credentials
 
-
 def credentials_to_dict(credentials):
-    """Convertir credentials en dict pour stockage (session, DB, etc.)"""
+    """Convertit credentials en dict pour stockage"""
     return {
         'token': credentials.token,
         'refresh_token': credentials.refresh_token,
@@ -253,532 +167,176 @@ def credentials_to_dict(credentials):
         'scopes': list(credentials.scopes) if credentials.scopes else []
     }
 
-
-def dict_to_credentials(credentials_dict):
-    """Convertir dict en objet Credentials"""
+def dict_to_credentials(creds_dict):
+    """Convertit dict en credentials"""
     return Credentials(
-        token=credentials_dict['token'],
-        refresh_token=credentials_dict.get('refresh_token'),
-        token_uri=credentials_dict['token_uri'],
-        client_id=credentials_dict['client_id'],
-        client_secret=credentials_dict['client_secret'],
-        scopes=credentials_dict.get('scopes', [])
+        token=creds_dict['token'],
+        refresh_token=creds_dict.get('refresh_token'),
+        token_uri=creds_dict['token_uri'],
+        client_id=creds_dict['client_id'],
+        client_secret=creds_dict['client_secret'],
+        scopes=creds_dict.get('scopes', [])
     )
 
-
-def refresh_credentials_if_needed(credentials_dict):
-    """
-    Rafraîchir les credentials si expirés
-
-    Args:
-        credentials_dict: Dict des credentials stockés
-
-    Returns:
-        tuple: (credentials, updated_dict) ou (None, None) si échec
-    """
-    credentials = dict_to_credentials(credentials_dict)
-
+def refresh_if_needed(creds_dict):
+    """Rafraîchit les credentials si expirés"""
+    credentials = dict_to_credentials(creds_dict)
     if not credentials.valid:
         if credentials.expired and credentials.refresh_token:
-            try:
-                credentials.refresh(Request())
-                return credentials, credentials_to_dict(credentials)
-            except Exception as e:
-                print(f"Erreur refresh credentials: {e}")
-                return None, None
-        else:
-            return None, None
-
-    return credentials, credentials_dict
+            credentials.refresh(Request())
+            return credentials, credentials_to_dict(credentials)
+        return None, None
+    return credentials, creds_dict
 ```
 
-### Routes Flask pour OAuth
-
-Ajoutez ces routes à votre application Flask :
+### Routes OAuth
 
 ```python
-from flask import Flask, redirect, request, session, url_for, jsonify
-from google_auth import (
-    get_authorization_url,
-    exchange_code_for_credentials,
-    credentials_to_dict,
-    refresh_credentials_if_needed
-)
-import os
-
-app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key')
-
-# Autoriser OAuth en HTTP (développement local uniquement!)
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
+from flask import redirect, request, session
 
 @app.route('/auth/google/login')
 def google_login():
-    """
-    Démarrer le flow OAuth Google
-    Redirige l'utilisateur vers la page de consentement Google
-    """
-    authorization_url, state = get_authorization_url()
+    url, state = get_authorization_url()
     session['oauth_state'] = state
-    return redirect(authorization_url)
-
+    return redirect(url)
 
 @app.route('/oauth2callback')
 def oauth2callback():
-    """
-    Callback OAuth - Google redirige ici après consentement
-    """
-    # Vérifier le state anti-CSRF
-    state = session.get('oauth_state')
-    if not state:
-        return jsonify({'error': 'State manquant'}), 400
-
-    try:
-        # Échanger le code contre des credentials
-        credentials = exchange_code_for_credentials(
-            authorization_response=request.url,
-            state=state
-        )
-
-        # Stocker les credentials en session (ou en DB)
-        session['google_credentials'] = credentials_to_dict(credentials)
-
-        # Nettoyer le state
-        del session['oauth_state']
-
-        # Rediriger vers votre page principale
-        return redirect(url_for('index'))
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+    credentials = exchange_code_for_credentials(request.url, session['oauth_state'])
+    session['google_credentials'] = credentials_to_dict(credentials)
+    return redirect('/')
 
 @app.route('/auth/google/logout')
 def google_logout():
-    """Déconnexion Google"""
-    if 'google_credentials' in session:
-        del session['google_credentials']
-    return redirect(url_for('index'))
-
-
-def get_valid_credentials():
-    """
-    Helper pour récupérer des credentials valides
-    À appeler avant chaque opération Google
-    """
-    if 'google_credentials' not in session:
-        return None
-
-    credentials, updated_dict = refresh_credentials_if_needed(session['google_credentials'])
-
-    if credentials and updated_dict:
-        session['google_credentials'] = updated_dict
-        return credentials
-
-    return None
-
-
-def require_google_auth(f):
-    """Décorateur pour protéger les routes nécessitant l'auth Google"""
-    from functools import wraps
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        credentials = get_valid_credentials()
-        if not credentials:
-            return jsonify({'error': 'Non authentifié Google', 'redirect': '/auth/google/login'}), 401
-        return f(*args, **kwargs)
-
-    return decorated_function
+    session.clear()
+    return redirect('/')
 ```
 
 ---
 
-## 6. Service de modification des documents
-
-Créez le fichier `drive_service.py` :
+## 5. Service Google Drive
 
 ```python
-"""
-Service Google Drive/Docs/Sheets/Slides
-Gère toutes les opérations de lecture et modification des documents
-"""
+# drive_service.py
 
-from typing import Dict, List, Optional
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-
 
 class DriveService:
-    """Service pour interagir avec les APIs Google"""
-
     def __init__(self, credentials):
-        """
-        Initialiser les services Google avec les credentials OAuth
-
-        Args:
-            credentials: Objet Credentials Google valide
-        """
-        self.credentials = credentials
         self.drive = build('drive', 'v3', credentials=credentials)
         self.docs = build('docs', 'v1', credentials=credentials)
         self.sheets = build('sheets', 'v4', credentials=credentials)
         self.slides = build('slides', 'v1', credentials=credentials)
 
-    # ==================== LECTURE ====================
+    # ===== LECTURE =====
 
-    def list_files(self, mime_types: List[str] = None, folder_id: str = None) -> List[Dict]:
-        """
-        Lister les fichiers du Drive
+    def list_editable_documents(self):
+        """Liste les documents éditables (Docs, Sheets, Slides)"""
+        query = "(mimeType='application/vnd.google-apps.document' or " \
+                "mimeType='application/vnd.google-apps.spreadsheet' or " \
+                "mimeType='application/vnd.google-apps.presentation') and trashed=false"
+        results = self.drive.files().list(q=query, pageSize=100,
+                                          fields="files(id,name,mimeType)").execute()
+        return results.get('files', [])
 
-        Args:
-            mime_types: Liste des types MIME à filtrer (optionnel)
-            folder_id: ID du dossier parent (optionnel)
+    def get_document_content(self, file_id):
+        """Lit le contenu d'un Google Doc"""
+        doc = self.docs.documents().get(documentId=file_id).execute()
+        text_parts = []
+        for elem in doc.get('body', {}).get('content', []):
+            if 'paragraph' in elem:
+                for e in elem['paragraph'].get('elements', []):
+                    if 'textRun' in e:
+                        text_parts.append(e['textRun'].get('content', ''))
+        return ''.join(text_parts)
 
-        Returns:
-            Liste des fichiers [{id, name, mimeType}, ...]
-        """
-        query_parts = ["trashed=false"]
+    def get_sheet_content(self, file_id, range_name='A1:Z1000'):
+        """Lit le contenu d'un Google Sheet"""
+        result = self.sheets.spreadsheets().values().get(
+            spreadsheetId=file_id, range=range_name).execute()
+        return result
 
-        if mime_types:
-            mime_query = " or ".join([f"mimeType='{mt}'" for mt in mime_types])
-            query_parts.append(f"({mime_query})")
+    # ===== MODIFICATION GOOGLE DOCS =====
 
-        if folder_id:
-            query_parts.append(f"'{folder_id}' in parents")
+    def replace_text_in_doc(self, file_id, find_text, replace_text):
+        """Chercher/Remplacer du texte"""
+        requests = [{'replaceAllText': {
+            'containsText': {'text': find_text, 'matchCase': False},
+            'replaceText': replace_text
+        }}]
+        result = self.docs.documents().batchUpdate(
+            documentId=file_id, body={'requests': requests}).execute()
+        occurrences = result.get('replies', [{}])[0].get('replaceAllText', {}).get('occurrencesChanged', 0)
+        return {'status': 'success', 'message': f'{occurrences} occurrence(s) remplacée(s)'}
 
-        query = " and ".join(query_parts)
+    def insert_text_after(self, file_id, after_text, new_text):
+        """Insérer du texte après un texte existant"""
+        doc = self.docs.documents().get(documentId=file_id).execute()
+        full_text = self.get_document_content(file_id)
+        position = full_text.find(after_text)
+        if position == -1:
+            return {'status': 'error', 'message': f'Texte "{after_text}" non trouvé'}
+        insert_index = position + len(after_text) + 1
+        requests = [{'insertText': {'location': {'index': insert_index}, 'text': new_text}}]
+        self.docs.documents().batchUpdate(documentId=file_id, body={'requests': requests}).execute()
+        return {'status': 'success', 'message': 'Texte inséré'}
 
-        try:
-            results = self.drive.files().list(
-                q=query,
-                pageSize=100,
-                fields="files(id, name, mimeType, modifiedTime)"
-            ).execute()
-            return results.get('files', [])
-        except HttpError as e:
-            print(f"Erreur list_files: {e}")
-            return []
-
-    def list_editable_documents(self) -> List[Dict]:
-        """Lister tous les documents éditables (Docs, Sheets, Slides)"""
-        return self.list_files(mime_types=[
-            'application/vnd.google-apps.document',
-            'application/vnd.google-apps.spreadsheet',
-            'application/vnd.google-apps.presentation'
-        ])
-
-    def get_document_content(self, file_id: str) -> str:
-        """
-        Lire le contenu textuel d'un Google Doc
-
-        Args:
-            file_id: ID du document
-
-        Returns:
-            Contenu texte du document
-        """
-        try:
-            doc = self.docs.documents().get(documentId=file_id).execute()
-
-            text_parts = []
-            for element in doc.get('body', {}).get('content', []):
-                if 'paragraph' in element:
-                    for elem in element['paragraph'].get('elements', []):
-                        if 'textRun' in elem:
-                            text_parts.append(elem['textRun'].get('content', ''))
-
-            return ''.join(text_parts)
-        except HttpError as e:
-            print(f"Erreur get_document_content: {e}")
-            return ""
-
-    def get_sheet_content(self, file_id: str, range_name: str = 'A1:Z1000') -> Dict:
-        """
-        Lire le contenu d'un Google Sheet
-
-        Args:
-            file_id: ID du spreadsheet
-            range_name: Plage de cellules à lire
-
-        Returns:
-            Dict avec 'values': [[row1], [row2], ...]
-        """
-        try:
-            result = self.sheets.spreadsheets().values().get(
-                spreadsheetId=file_id,
-                range=range_name
-            ).execute()
-            return result
-        except HttpError as e:
-            print(f"Erreur get_sheet_content: {e}")
-            return {'values': []}
-
-    # ==================== MODIFICATION GOOGLE DOCS ====================
-
-    def replace_text_in_doc(self, file_id: str, find_text: str, replace_text: str) -> Dict:
-        """
-        Chercher et remplacer du texte dans un Google Doc
-
-        Args:
-            file_id: ID du document
-            find_text: Texte à trouver
-            replace_text: Texte de remplacement
-
-        Returns:
-            Dict avec status et message
-        """
-        try:
-            requests = [{
-                'replaceAllText': {
-                    'containsText': {'text': find_text, 'matchCase': False},
-                    'replaceText': replace_text
-                }
-            }]
-
-            result = self.docs.documents().batchUpdate(
-                documentId=file_id,
-                body={'requests': requests}
-            ).execute()
-
-            occurrences = 0
-            replies = result.get('replies', [])
-            if replies and 'replaceAllText' in replies[0]:
-                occurrences = replies[0]['replaceAllText'].get('occurrencesChanged', 0)
-
-            return {
-                'status': 'success',
-                'message': f'{occurrences} occurrence(s) remplacée(s)',
-                'occurrences': occurrences
-            }
-        except HttpError as e:
-            return {'status': 'error', 'message': str(e)}
-
-    def insert_text_after(self, file_id: str, after_text: str, new_text: str) -> Dict:
-        """
-        Insérer du texte après un texte spécifique
-
-        Args:
-            file_id: ID du document
-            after_text: Texte après lequel insérer
-            new_text: Texte à insérer
-
-        Returns:
-            Dict avec status et message
-        """
-        try:
-            # Récupérer le document pour trouver la position
-            doc = self.docs.documents().get(documentId=file_id).execute()
-
-            full_text = ""
-            for element in doc.get('body', {}).get('content', []):
-                if 'paragraph' in element:
-                    for elem in element['paragraph'].get('elements', []):
-                        if 'textRun' in elem:
-                            full_text += elem['textRun'].get('content', '')
-
-            position = full_text.find(after_text)
-            if position == -1:
-                return {'status': 'error', 'message': f'Texte "{after_text}" non trouvé'}
-
-            # +1 pour l'offset du document Google
-            insert_index = position + len(after_text) + 1
-
-            requests = [{
-                'insertText': {
-                    'location': {'index': insert_index},
-                    'text': new_text
-                }
-            }]
-
-            self.docs.documents().batchUpdate(
-                documentId=file_id,
-                body={'requests': requests}
-            ).execute()
-
-            return {'status': 'success', 'message': 'Texte inséré avec succès'}
-        except HttpError as e:
-            return {'status': 'error', 'message': str(e)}
-
-    def delete_text_in_doc(self, file_id: str, text_to_delete: str) -> Dict:
-        """
-        Supprimer un texte spécifique du document
-
-        Args:
-            file_id: ID du document
-            text_to_delete: Texte à supprimer
-
-        Returns:
-            Dict avec status et message
-        """
+    def delete_text_in_doc(self, file_id, text_to_delete):
+        """Supprimer un texte"""
         return self.replace_text_in_doc(file_id, text_to_delete, '')
 
-    def append_to_doc(self, file_id: str, content: str) -> Dict:
-        """
-        Ajouter du contenu à la fin d'un Google Doc
+    def append_to_doc(self, file_id, content):
+        """Ajouter à la fin du document"""
+        doc = self.docs.documents().get(documentId=file_id).execute()
+        end_index = max([e.get('endIndex', 1) for e in doc.get('body', {}).get('content', [])], default=1)
+        requests = [{'insertText': {'location': {'index': max(1, end_index - 1)}, 'text': '\n' + content}}]
+        self.docs.documents().batchUpdate(documentId=file_id, body={'requests': requests}).execute()
+        return {'status': 'success', 'message': 'Contenu ajouté'}
 
-        Args:
-            file_id: ID du document
-            content: Contenu à ajouter
+    def replace_doc_content(self, file_id, new_content):
+        """Remplacer tout le contenu"""
+        doc = self.docs.documents().get(documentId=file_id).execute()
+        end_index = max([e.get('endIndex', 1) for e in doc.get('body', {}).get('content', [])], default=1)
+        requests = []
+        if end_index > 2:
+            requests.append({'deleteContentRange': {'range': {'startIndex': 1, 'endIndex': end_index - 1}}})
+        if new_content:
+            requests.append({'insertText': {'location': {'index': 1}, 'text': new_content}})
+        if requests:
+            self.docs.documents().batchUpdate(documentId=file_id, body={'requests': requests}).execute()
+        return {'status': 'success', 'message': 'Document remplacé'}
 
-        Returns:
-            Dict avec status et message
-        """
-        try:
-            doc = self.docs.documents().get(documentId=file_id).execute()
+    # ===== MODIFICATION GOOGLE SHEETS =====
 
-            end_index = 1
-            for element in doc.get('body', {}).get('content', []):
-                if 'endIndex' in element:
-                    end_index = max(end_index, element['endIndex'])
-
-            insert_index = max(1, end_index - 1)
-
-            requests = [{
-                'insertText': {
-                    'location': {'index': insert_index},
-                    'text': '\n' + content
-                }
-            }]
-
-            self.docs.documents().batchUpdate(
-                documentId=file_id,
-                body={'requests': requests}
-            ).execute()
-
-            return {'status': 'success', 'message': 'Contenu ajouté à la fin'}
-        except HttpError as e:
-            return {'status': 'error', 'message': str(e)}
-
-    def replace_doc_content(self, file_id: str, new_content: str) -> Dict:
-        """
-        Remplacer tout le contenu d'un Google Doc
-
-        Args:
-            file_id: ID du document
-            new_content: Nouveau contenu complet
-
-        Returns:
-            Dict avec status et message
-        """
-        try:
-            doc = self.docs.documents().get(documentId=file_id).execute()
-
-            end_index = 1
-            for element in doc.get('body', {}).get('content', []):
-                if 'endIndex' in element:
-                    end_index = max(end_index, element['endIndex'])
-
-            requests = []
-
-            # Supprimer le contenu existant
-            if end_index > 2:
-                requests.append({
-                    'deleteContentRange': {
-                        'range': {'startIndex': 1, 'endIndex': end_index - 1}
-                    }
-                })
-
-            # Insérer le nouveau contenu
-            if new_content:
-                requests.append({
-                    'insertText': {
-                        'location': {'index': 1},
-                        'text': new_content
-                    }
-                })
-
-            if requests:
-                self.docs.documents().batchUpdate(
-                    documentId=file_id,
-                    body={'requests': requests}
-                ).execute()
-
-            return {'status': 'success', 'message': 'Document remplacé'}
-        except HttpError as e:
-            return {'status': 'error', 'message': str(e)}
-
-    # ==================== MODIFICATION GOOGLE SHEETS ====================
-
-    def update_sheet_cells(self, file_id: str, updates: List[Dict]) -> Dict:
-        """
-        Modifier des cellules spécifiques dans un Google Sheet
-
-        Args:
-            file_id: ID du spreadsheet
-            updates: Liste de mises à jour [{"cell": "A1", "value": "xxx"}, ...]
-
-        Returns:
-            Dict avec status et message
-        """
-        try:
-            data = []
-            for update in updates:
-                cell = update.get('cell', '')
-                value = update.get('value', '')
-                if cell:
-                    data.append({
-                        'range': cell,
-                        'values': [[value]]
-                    })
-
-            if not data:
-                return {'status': 'error', 'message': 'Aucune mise à jour fournie'}
-
-            result = self.sheets.spreadsheets().values().batchUpdate(
-                spreadsheetId=file_id,
-                body={
-                    'valueInputOption': 'USER_ENTERED',
-                    'data': data
-                }
-            ).execute()
-
-            updated = result.get('totalUpdatedCells', 0)
-            return {
-                'status': 'success',
-                'message': f'{updated} cellule(s) mise(s) à jour',
-                'updated_cells': updated
-            }
-        except HttpError as e:
-            return {'status': 'error', 'message': str(e)}
+    def update_sheet_cells(self, file_id, updates):
+        """Modifier des cellules: [{"cell": "A1", "value": "xxx"}, ...]"""
+        data = [{'range': u['cell'], 'values': [[u['value']]]} for u in updates if u.get('cell')]
+        if not data:
+            return {'status': 'error', 'message': 'Aucune mise à jour'}
+        result = self.sheets.spreadsheets().values().batchUpdate(
+            spreadsheetId=file_id,
+            body={'valueInputOption': 'USER_ENTERED', 'data': data}
+        ).execute()
+        return {'status': 'success', 'message': f'{result.get("totalUpdatedCells", 0)} cellule(s) mise(s) à jour'}
 ```
 
 ---
 
-## 7. Fonctions d'exécution des commandes IA
-
-Créez le fichier `command_executor.py` :
+## 6. Exécution des commandes IA
 
 ```python
-"""
-Exécuteur de commandes IA
-Parse les réponses de l'IA et exécute les modifications sur les documents
-"""
+# command_executor.py
 
 import json
-from typing import Dict, Tuple, Optional
-from drive_service import DriveService
 
-
-def extract_json_from_command(answer: str, marker: str) -> Optional[Dict]:
-    """
-    Extraire le JSON d'une commande IA avec gestion des accolades imbriquées
-
-    Args:
-        answer: Réponse complète de l'IA
-        marker: Marqueur de début (ex: '[MODIFY_CELLS:')
-
-    Returns:
-        Dict parsé ou None si non trouvé
-    """
-    start_idx = answer.find(marker)
-    if start_idx == -1:
+def extract_json_from_command(answer, marker):
+    """Extrait le JSON d'une commande avec gestion des accolades imbriquées"""
+    start = answer.find(marker)
+    if start == -1:
         return None
 
-    json_start = start_idx + len(marker)
+    json_start = start + len(marker)
     brace_count = 0
-    json_end = json_start
     in_string = False
     escape_next = False
 
@@ -799,36 +357,20 @@ def extract_json_from_command(answer: str, marker: str) -> Optional[Dict]:
         elif char == '}':
             brace_count -= 1
             if brace_count == 0:
-                json_end = i + 1
-                break
+                return json.loads(answer[json_start:i+1])
+    return None
 
-    try:
-        return json.loads(answer[json_start:json_end])
-    except json.JSONDecodeError as e:
-        print(f"Erreur parsing JSON: {e}")
-        return None
-
-
-def remove_command_from_answer(answer: str, marker: str) -> str:
-    """
-    Retirer la commande de la réponse pour affichage utilisateur
-
-    Args:
-        answer: Réponse complète de l'IA
-        marker: Marqueur de début de la commande
-
-    Returns:
-        Réponse nettoyée sans la commande
-    """
-    start_idx = answer.find(marker)
-    if start_idx == -1:
+def remove_command_from_answer(answer, marker):
+    """Retire la commande pour affichage utilisateur"""
+    start = answer.find(marker)
+    if start == -1:
         return answer
 
-    end_idx = start_idx
     brace_count = 0
     in_string = False
+    end = start
 
-    for i, char in enumerate(answer[start_idx:], start=start_idx):
+    for i, char in enumerate(answer[start:], start=start):
         if char == '"' and (i == 0 or answer[i-1] != '\\'):
             in_string = not in_string
         if not in_string:
@@ -837,98 +379,46 @@ def remove_command_from_answer(answer: str, marker: str) -> str:
             elif char == '}':
                 brace_count -= 1
             elif char == ']' and brace_count == 0:
-                end_idx = i + 1
+                end = i + 1
                 break
 
-    return (answer[:start_idx] + answer[end_idx:]).strip()
+    return (answer[:start] + answer[end:]).strip()
 
-
-def execute_modification(answer: str, drive_service: DriveService) -> Tuple[Optional[Dict], str]:
-    """
-    Parser la réponse de l'IA et exécuter la modification appropriée
-
-    Args:
-        answer: Réponse de l'IA contenant potentiellement une commande
-        drive_service: Instance de DriveService avec credentials valides
-
-    Returns:
-        Tuple (result, cleaned_answer):
-        - result: Résultat de la modification ou None
-        - cleaned_answer: Réponse sans la commande pour affichage
-    """
+def execute_modification(answer, drive_service):
+    """Parse et exécute les commandes de l'IA"""
     result = None
 
-    # === GOOGLE SHEETS ===
     if '[MODIFY_CELLS:' in answer:
-        try:
-            cmd = extract_json_from_command(answer, '[MODIFY_CELLS:')
-            if cmd:
-                result = drive_service.update_sheet_cells(
-                    cmd['file_id'],
-                    cmd['updates']
-                )
-        except Exception as e:
-            result = {'status': 'error', 'message': str(e)}
+        cmd = extract_json_from_command(answer, '[MODIFY_CELLS:')
+        if cmd:
+            result = drive_service.update_sheet_cells(cmd['file_id'], cmd['updates'])
         answer = remove_command_from_answer(answer, '[MODIFY_CELLS:')
 
-    # === GOOGLE DOCS - Remplacer texte ===
     elif '[REPLACE_TEXT:' in answer:
-        try:
-            cmd = extract_json_from_command(answer, '[REPLACE_TEXT:')
-            if cmd:
-                result = drive_service.replace_text_in_doc(
-                    cmd['file_id'],
-                    cmd['find'],
-                    cmd['replace']
-                )
-        except Exception as e:
-            result = {'status': 'error', 'message': str(e)}
+        cmd = extract_json_from_command(answer, '[REPLACE_TEXT:')
+        if cmd:
+            result = drive_service.replace_text_in_doc(cmd['file_id'], cmd['find'], cmd['replace'])
         answer = remove_command_from_answer(answer, '[REPLACE_TEXT:')
 
-    # === GOOGLE DOCS - Insérer après ===
     elif '[INSERT_AFTER:' in answer:
-        try:
-            cmd = extract_json_from_command(answer, '[INSERT_AFTER:')
-            if cmd:
-                result = drive_service.insert_text_after(
-                    cmd['file_id'],
-                    cmd['after'],
-                    cmd['content']
-                )
-        except Exception as e:
-            result = {'status': 'error', 'message': str(e)}
+        cmd = extract_json_from_command(answer, '[INSERT_AFTER:')
+        if cmd:
+            result = drive_service.insert_text_after(cmd['file_id'], cmd['after'], cmd['content'])
         answer = remove_command_from_answer(answer, '[INSERT_AFTER:')
 
-    # === GOOGLE DOCS - Supprimer texte ===
     elif '[DELETE_TEXT:' in answer:
-        try:
-            cmd = extract_json_from_command(answer, '[DELETE_TEXT:')
-            if cmd:
-                result = drive_service.delete_text_in_doc(
-                    cmd['file_id'],
-                    cmd['text']
-                )
-        except Exception as e:
-            result = {'status': 'error', 'message': str(e)}
+        cmd = extract_json_from_command(answer, '[DELETE_TEXT:')
+        if cmd:
+            result = drive_service.delete_text_in_doc(cmd['file_id'], cmd['text'])
         answer = remove_command_from_answer(answer, '[DELETE_TEXT:')
 
-    # === GOOGLE DOCS - Append/Replace ===
     elif '[MODIFY_DOC:' in answer:
-        try:
-            cmd = extract_json_from_command(answer, '[MODIFY_DOC:')
-            if cmd:
-                if cmd.get('action') == 'append':
-                    result = drive_service.append_to_doc(
-                        cmd['file_id'],
-                        cmd['content']
-                    )
-                elif cmd.get('action') == 'replace':
-                    result = drive_service.replace_doc_content(
-                        cmd['file_id'],
-                        cmd['content']
-                    )
-        except Exception as e:
-            result = {'status': 'error', 'message': str(e)}
+        cmd = extract_json_from_command(answer, '[MODIFY_DOC:')
+        if cmd:
+            if cmd.get('action') == 'append':
+                result = drive_service.append_to_doc(cmd['file_id'], cmd['content'])
+            elif cmd.get('action') == 'replace':
+                result = drive_service.replace_doc_content(cmd['file_id'], cmd['content'])
         answer = remove_command_from_answer(answer, '[MODIFY_DOC:')
 
     return result, answer
@@ -936,97 +426,52 @@ def execute_modification(answer: str, drive_service: DriveService) -> Tuple[Opti
 
 ---
 
-## 8. Prompts système pour l'IA
+## 7. Prompts système
 
-Créez le fichier `prompts.py` :
+### Règles strictes (appliquées à tous les prompts)
 
 ```python
+STRICT_RULES = """
+===== REGLES ABSOLUES - JAMAIS D'EXCEPTION =====
+
+**REGLE 1 - TOUJOURS EXECUTER:**
+Quand l'utilisateur te demande de faire quelque chose, tu DOIS OBLIGATOIREMENT inclure la commande dans ta réponse.
+- Pas d'excuse, pas de "je ne peux pas", pas de "je vais essayer"
+- Si on te demande d'ajouter/modifier/supprimer → TU LE FAIS
+- La SEULE exception: si l'utilisateur dit "non", "laisse tomber", "annule"
+
+**REGLE 2 - JAMAIS MENTIR:**
+Tu ne dois JAMAIS dire "c'est fait" ou "j'ai modifié" si ta réponse NE CONTIENT PAS de commande.
+- Si ta réponse ne contient pas de commande → tu n'as RIEN fait
+- INTERDIT de confirmer une action sans avoir inclus la commande correspondante
+
+**REGLE 3 - STRUCTURE DE REPONSE:**
+Quand on te demande une tâche:
+1. D'abord la commande: [MODIFY_CELLS:...] ou [REPLACE_TEXT:...] etc.
+2. Ensuite une confirmation courte: "C'est fait" / "Voilà" / "OK"
+
+MAUVAIS (INTERDIT):
+User: "Ajoute lundi avec 12 utilisateurs"
+Assistant: "C'est fait, j'ai ajouté la ligne."
+→ INTERDIT car il n'y a pas de commande!
+
+BON:
+User: "Ajoute lundi avec 12 utilisateurs"
+Assistant: "[MODIFY_CELLS:{...}] C'est fait."
+→ CORRECT car la commande est présente
+
+**REGLE 4 - EN CAS DE DOUTE:**
+Si tu ne comprends pas exactement:
+- Pose une question pour clarifier
+- NE FAIS PAS de modification si tu n'es pas sûr
+- NE DIS PAS "c'est fait" si tu n'as pas compris
 """
-Prompts système pour guider l'IA dans la modification des documents
-"""
+```
 
+### Prompt Google Sheets
 
-def build_docs_prompt(document: dict, doc_content: str) -> str:
-    """
-    Construire le prompt pour un Google Doc
-
-    Args:
-        document: Dict avec {id, name, mimeType}
-        doc_content: Contenu textuel du document
-
-    Returns:
-        Prompt système complet
-    """
-    # Tronquer si trop long
-    if len(doc_content) > 3000:
-        doc_content = doc_content[:3000] + "\n... (contenu tronqué)"
-
-    return f"""Tu es un assistant qui modifie le document "{document['name']}".
-
-=== METHODOLOGIE DE MODIFICATION ===
-
-***** REGLE FONDAMENTALE *****
-NE REMPLACE PAS TOUT LE DOCUMENT si seule une partie doit être modifiée!
-Analyse d'abord le contenu, puis choisis la commande APPROPRIEE.
-*****************************
-
-CONTENU ACTUEL DU DOCUMENT:
---- DEBUT ---
-{doc_content}
---- FIN ---
-
-=== COMMANDES DISPONIBLES ===
-
-1. REMPLACER un texte spécifique par un autre:
-[REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"texte à trouver", "replace":"nouveau texte"}}]
-→ Utilise pour: modifier un titre, corriger une faute, changer un mot/phrase
-
-2. INSERER du texte après un texte existant:
-[INSERT_AFTER:{{"file_id":"{document['id']}", "after":"texte existant", "content":"texte à insérer"}}]
-→ Utilise pour: ajouter après une section, insérer un paragraphe
-
-3. SUPPRIMER un texte:
-[DELETE_TEXT:{{"file_id":"{document['id']}", "text":"texte à supprimer"}}]
-→ Utilise pour: enlever un paragraphe, supprimer une phrase
-
-4. AJOUTER à la fin du document:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"texte à ajouter"}}]
-→ Utilise pour: ajouter une conclusion, ajouter une section à la fin
-
-5. REMPLACER TOUT le document (utiliser RAREMENT!):
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"nouveau contenu complet"}}]
-→ Utilise UNIQUEMENT si l'utilisateur demande explicitement de tout réécrire
-
-=== EXEMPLES ===
-
-Demande: "Change le titre en 'Nouveau Titre'"
-→ [REPLACE_TEXT:{{"file_id":"...", "find":"Ancien Titre", "replace":"Nouveau Titre"}}]
-
-Demande: "Ajoute une conclusion"
-→ [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"\\n\\nConclusion\\n\\nEn conclusion..."}}]
-
-Demande: "Supprime le paragraphe sur les risques"
-→ [DELETE_TEXT:{{"file_id":"...", "text":"Le paragraphe complet sur les risques..."}}]
-
-=== REGLES ===
-1. Fais la modification IMMEDIATEMENT en ajoutant la commande
-2. Après la commande, confirme brièvement ce qui a été fait
-3. NE DIS JAMAIS "je vais faire" - FAIS-LE d'abord!
-"""
-
-
-def build_sheets_prompt(document: dict, values: list) -> str:
-    """
-    Construire le prompt pour un Google Sheet
-
-    Args:
-        document: Dict avec {id, name, mimeType}
-        values: Liste des lignes [[row1], [row2], ...]
-
-    Returns:
-        Prompt système complet
-    """
-    # Formater les données avec références de cellules
+```python
+def build_sheets_prompt(document, values):
     sheet_display = ""
     for row_idx, row in enumerate(values[:50], start=1):
         row_str = f"Ligne {row_idx}: "
@@ -1035,379 +480,148 @@ def build_sheets_prompt(document: dict, values: list) -> str:
             row_str += f"[{col_letter}{row_idx}={cell}] "
         sheet_display += row_str.strip() + "\n"
 
-    if len(values) > 50:
-        sheet_display += f"... et {len(values) - 50} lignes supplémentaires\n"
-
-    return f"""Tu es un assistant qui modifie le tableur "{document['name']}".
-
-=== METHODOLOGIE GOOGLE SHEETS ===
-
+    return f"""
 ***** REGLE FONDAMENTALE *****
-CHAQUE DONNEE = UNE CELLULE SEPAREE
-JAMAIS plusieurs informations dans une seule cellule!
+CHAQUE DONNEE = UNE CELLULE SEPAREE. JAMAIS plusieurs informations dans une seule cellule!
 *****************************
 
-STRUCTURE:
-- COLONNES = LETTRES (A, B, C, D...)
-  → A1, A2, A3 = même colonne A
-- LIGNES = CHIFFRES (1, 2, 3...)
-  → A1, B1, C1 = même ligne 1
-
-DONNEES ACTUELLES:
+DONNEES DE LA FEUILLE:
 ```
 {sheet_display}
 ```
 
-=== COMMANDE DISPONIBLE ===
+COMMANDE:
+[MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"xxx"}}]}}]
 
-[MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"xxx"}}, {{"cell":"B1", "value":"yyy"}}]}}]
-
-=== METHODOLOGIE ===
-
-1. IDENTIFIER les en-têtes (ligne 1 généralement):
-   - Quelle colonne pour quel type de donnée?
-   - Ex: A=Date, B=Utilisateurs, C=Agent1, D=Agent2
-
-2. TROUVER la dernière ligne de données
-
-3. MAPPER chaque info vers sa colonne:
-   - "lundi 8 décembre" → Date → colonne A
-   - "12 utilisateurs" → Utilisateurs → colonne B
-   - "Agent1 a eu 3" → Agent1 → colonne C
-
-4. CREER une cellule pour CHAQUE donnée:
-   CORRECT: A6="Lundi 8 dec", B6="12", C6="3"
-   INCORRECT: A6="Lundi 8 dec, 12 utilisateurs, Agent1: 3" ← INTERDIT!
-
-=== EXEMPLE ===
-
-Structure: A=Date, B=Total, C=Friday, D=Campagne
-Dernière ligne: 5
-
-Demande: "Ajoute lundi 8 déc, 12 users, Friday 1, Campagne 1"
-
-Analyse:
-- Nouvelle ligne = 6
-- Date → A6
-- 12 → B6
-- Friday 1 → C6
-- Campagne 1 → D6
-
-Commande:
-[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Lundi 8 décembre"}}, {{"cell":"B6", "value":"12"}}, {{"cell":"C6", "value":"1"}}, {{"cell":"D6", "value":"1"}}]}}]
-
-=== REGLES ===
-1. Fais la modification IMMEDIATEMENT
-2. Confirme brièvement après
-3. Respecte TOUJOURS la structure existante
+{STRICT_RULES}
 """
+```
 
+### Prompt Google Docs
 
-def build_slides_prompt(document: dict) -> str:
-    """
-    Construire le prompt pour Google Slides
+```python
+def build_docs_prompt(document, doc_content):
+    if len(doc_content) > 2000:
+        doc_content = doc_content[:2000] + "\n... (tronqué)"
 
-    Args:
-        document: Dict avec {id, name, mimeType}
+    return f"""
+CONTENU ACTUEL:
+---
+{doc_content}
+---
 
-    Returns:
-        Prompt système complet
-    """
-    return f"""Tu es un assistant qui modifie la présentation "{document['name']}".
+COMMANDES:
+- Remplacer: [REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"...", "replace":"..."}}]
+- Insérer après: [INSERT_AFTER:{{"file_id":"{document['id']}", "after":"...", "content":"..."}}]
+- Supprimer: [DELETE_TEXT:{{"file_id":"{document['id']}", "text":"..."}}]
+- Ajouter à la fin: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"..."}}]
 
-=== COMMANDE DISPONIBLE ===
-
-Pour ajouter une diapositive à la fin:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Titre de la slide\\n\\nContenu de la slide"}}]
-
-=== REGLES ===
-1. Fais la modification IMMEDIATEMENT
-2. Confirme brièvement après
+{STRICT_RULES}
 """
 ```
 
 ---
 
-## 9. Intégration dans votre endpoint
-
-Créez l'endpoint principal dans votre application :
+## 8. Endpoint Chat (texte)
 
 ```python
-from flask import Flask, request, jsonify, session
-from openai import OpenAI
-from google_auth import refresh_credentials_if_needed, dict_to_credentials
-from drive_service import DriveService
-from command_executor import execute_modification
-from prompts import build_docs_prompt, build_sheets_prompt, build_slides_prompt
-import os
-
-app = Flask(__name__)
-openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-
-
-@app.route('/api/chat-edit', methods=['POST'])
-def chat_edit():
-    """
-    Endpoint principal pour modifier un document via chat
-
-    Body JSON attendu:
-    {
-        "message": "Le message de l'utilisateur",
-        "document": {
-            "id": "google-file-id",
-            "name": "Nom du document",
-            "mimeType": "application/vnd.google-apps.document"
-        },
-        "history": [
-            {"role": "user", "content": "..."},
-            {"role": "assistant", "content": "..."}
-        ]
-    }
-    """
-
-    # 1. Vérifier l'authentification
-    if 'google_credentials' not in session:
-        return jsonify({'error': 'Non authentifié', 'redirect': '/auth/google/login'}), 401
-
-    # 2. Rafraîchir les credentials si nécessaire
-    credentials, updated = refresh_credentials_if_needed(session['google_credentials'])
-    if not credentials:
-        return jsonify({'error': 'Session expirée', 'redirect': '/auth/google/login'}), 401
-
-    if updated:
-        session['google_credentials'] = updated
-
-    # 3. Parser la requête
-    data = request.json
-    if not data or 'message' not in data or 'document' not in data:
-        return jsonify({'error': 'Paramètres manquants'}), 400
-
-    message = data['message']
-    document = data['document']
-    history = data.get('history', [])
-
-    try:
-        # 4. Initialiser le service Drive
-        drive_service = DriveService(credentials)
-
-        # 5. Construire le prompt selon le type de document
-        mime_type = document.get('mimeType', '')
-
-        if 'spreadsheet' in mime_type:
-            # Google Sheets
-            content = drive_service.get_sheet_content(document['id'])
-            system_prompt = build_sheets_prompt(document, content.get('values', []))
-
-        elif 'presentation' in mime_type:
-            # Google Slides
-            system_prompt = build_slides_prompt(document)
-
-        else:
-            # Google Docs (par défaut)
-            content = drive_service.get_document_content(document['id'])
-            system_prompt = build_docs_prompt(document, content)
-
-        # 6. Construire les messages pour l'IA
-        messages = [{"role": "system", "content": system_prompt}]
-
-        # Ajouter l'historique (limité aux 6 derniers messages)
-        for msg in history[-6:]:
-            messages.append(msg)
-
-        messages.append({"role": "user", "content": message})
-
-        # 7. Appeler l'IA
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",  # ou gpt-4, gpt-3.5-turbo, etc.
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2000
-        )
-
-        ai_answer = response.choices[0].message.content
-
-        # 8. Exécuter les modifications si présentes
-        modification_result, clean_answer = execute_modification(ai_answer, drive_service)
-
-        # 9. Retourner la réponse
-        return jsonify({
-            'answer': clean_answer,
-            'modification_result': modification_result
-        })
-
-    except Exception as e:
-        import traceback
-        print(f"Erreur chat-edit: {e}\n{traceback.format_exc()}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/list-documents', methods=['GET'])
-def list_documents():
-    """Lister les documents éditables de l'utilisateur"""
-
-    if 'google_credentials' not in session:
-        return jsonify({'error': 'Non authentifié'}), 401
-
-    credentials, updated = refresh_credentials_if_needed(session['google_credentials'])
-    if not credentials:
-        return jsonify({'error': 'Session expirée'}), 401
-
-    if updated:
-        session['google_credentials'] = updated
-
-    try:
-        drive_service = DriveService(credentials)
-        documents = drive_service.list_editable_documents()
-        return jsonify({'documents': documents})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-```
-
----
-
-## 10. Exemple complet
-
-### Structure de fichiers
-
-```
-votre-projet/
-├── app.py                  # Application Flask principale
-├── google_auth.py          # Module authentification OAuth
-├── drive_service.py        # Service Google APIs
-├── command_executor.py     # Exécuteur de commandes IA
-├── prompts.py              # Prompts système
-├── requirements.txt        # Dépendances
-├── .env                    # Variables d'environnement
-└── templates/
-    └── index.html          # Interface utilisateur
-```
-
-### Fichier `app.py` complet
-
-```python
-"""
-Application principale - Agent IA Google Docs
-"""
-
-import os
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from flask_cors import CORS
-from dotenv import load_dotenv
 from openai import OpenAI
 
-# Charger les variables d'environnement
-load_dotenv()
-
-# Imports locaux
-from google_auth import (
-    get_authorization_url,
-    exchange_code_for_credentials,
-    credentials_to_dict,
-    refresh_credentials_if_needed
-)
-from drive_service import DriveService
-from command_executor import execute_modification
-from prompts import build_docs_prompt, build_sheets_prompt, build_slides_prompt
-
-# Initialisation Flask
-app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key')
-CORS(app)
-
-# OAuth en HTTP (dev uniquement)
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
-# Client OpenAI
-openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-
-
-# ============== ROUTES AUTH ==============
-
-@app.route('/auth/google/login')
-def google_login():
-    authorization_url, state = get_authorization_url()
-    session['oauth_state'] = state
-    return redirect(authorization_url)
-
-
-@app.route('/oauth2callback')
-def oauth2callback():
-    state = session.get('oauth_state')
-    if not state:
-        return jsonify({'error': 'State manquant'}), 400
-
-    credentials = exchange_code_for_credentials(request.url, state)
-    session['google_credentials'] = credentials_to_dict(credentials)
-    del session['oauth_state']
-
-    return redirect(url_for('index'))
-
-
-@app.route('/auth/google/logout')
-def google_logout():
-    session.clear()
-    return redirect(url_for('index'))
-
-
-# ============== ROUTES API ==============
-
-@app.route('/')
-def index():
-    is_authenticated = 'google_credentials' in session
-    return render_template('index.html', authenticated=is_authenticated)
-
-
-@app.route('/api/list-documents')
-def list_documents():
-    if 'google_credentials' not in session:
-        return jsonify({'error': 'Non authentifié'}), 401
-
-    credentials, updated = refresh_credentials_if_needed(session['google_credentials'])
-    if not credentials:
-        return jsonify({'error': 'Session expirée'}), 401
-    if updated:
-        session['google_credentials'] = updated
-
-    drive_service = DriveService(credentials)
-    documents = drive_service.list_editable_documents()
-    return jsonify({'documents': documents})
-
-
-@app.route('/api/chat-edit', methods=['POST'])
+@app.route('/chat-edit', methods=['POST'])
 def chat_edit():
-    if 'google_credentials' not in session:
-        return jsonify({'error': 'Non authentifié'}), 401
-
-    credentials, updated = refresh_credentials_if_needed(session['google_credentials'])
-    if not credentials:
-        return jsonify({'error': 'Session expirée'}), 401
-    if updated:
-        session['google_credentials'] = updated
-
     data = request.json
     message = data['message']
-    document = data['document']
+    document = data['document']  # {id, name, mimeType}
     history = data.get('history', [])
 
+    # Récupérer credentials
+    credentials, _ = refresh_if_needed(session['google_credentials'])
     drive_service = DriveService(credentials)
+
+    # Construire le prompt selon le type
     mime_type = document.get('mimeType', '')
-
-    # Construire le prompt
     if 'spreadsheet' in mime_type:
         content = drive_service.get_sheet_content(document['id'])
         system_prompt = build_sheets_prompt(document, content.get('values', []))
-    elif 'presentation' in mime_type:
-        system_prompt = build_slides_prompt(document)
     else:
         content = drive_service.get_document_content(document['id'])
         system_prompt = build_docs_prompt(document, content)
 
-    # Appel IA
+    # Appel OpenAI
+    client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(history[-6:])
     messages.append({"role": "user", "content": message})
 
-    response = openai_client.chat.completions.create(
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.7
+    )
+
+    answer = response.choices[0].message.content
+
+    # Exécuter les modifications
+    result, clean_answer = execute_modification(answer, drive_service)
+
+    return jsonify({
+        'answer': clean_answer,
+        'modification_result': result
+    })
+```
+
+---
+
+## 9. Endpoint Voice (push-to-talk)
+
+### Backend
+
+```python
+@app.route('/voice-chat', methods=['POST'])
+def voice_chat():
+    """
+    Reçoit: audio (fichier WebM) + document + history
+    Retourne: transcription + réponse + audio (base64 MP3)
+    """
+    import tempfile
+    import base64
+
+    audio_file = request.files['audio']
+    document = json.loads(request.form.get('document', '{}'))
+    history = json.loads(request.form.get('history', '[]'))
+
+    credentials, _ = refresh_if_needed(session['google_credentials'])
+    client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+    # 1. SPEECH-TO-TEXT avec Whisper
+    with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp:
+        audio_file.save(temp.name)
+        with open(temp.name, 'rb') as f:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=f,
+                language="fr"
+            )
+        os.unlink(temp.name)
+
+    user_message = transcription.text
+
+    # 2. Traitement IA
+    drive_service = DriveService(credentials)
+    mime_type = document.get('mimeType', '')
+
+    if 'spreadsheet' in mime_type:
+        content = drive_service.get_sheet_content(document['id'])
+        system_prompt = build_sheets_prompt(document, content.get('values', []))
+    else:
+        content = drive_service.get_document_content(document['id'])
+        system_prompt = build_docs_prompt(document, content)
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(history[-10:])
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
         temperature=0.7
@@ -1416,74 +630,230 @@ def chat_edit():
     ai_answer = response.choices[0].message.content
     result, clean_answer = execute_modification(ai_answer, drive_service)
 
+    # 3. TEXT-TO-SPEECH avec voix alloy
+    tts_response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=clean_answer,
+        response_format="mp3"
+    )
+
+    audio_base64 = base64.b64encode(tts_response.content).decode('utf-8')
+
     return jsonify({
-        'answer': clean_answer,
+        'transcription': user_message,
+        'response': clean_answer,
+        'audio': audio_base64,
         'modification_result': result
     })
-
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
 ```
 
 ---
 
-## 11. Format des commandes IA
+## 10. Interface Frontend
 
-### Google Docs
+### Modal Push-to-Talk
 
-| Commande | Format | Usage |
-|----------|--------|-------|
-| Remplacer texte | `[REPLACE_TEXT:{"file_id":"...", "find":"...", "replace":"..."}]` | Modifier un mot, titre, phrase |
-| Insérer après | `[INSERT_AFTER:{"file_id":"...", "after":"...", "content":"..."}]` | Ajouter après une section |
-| Supprimer | `[DELETE_TEXT:{"file_id":"...", "text":"..."}]` | Supprimer un paragraphe |
-| Ajouter à la fin | `[MODIFY_DOC:{"file_id":"...", "action":"append", "content":"..."}]` | Ajouter une conclusion |
-| Tout remplacer | `[MODIFY_DOC:{"file_id":"...", "action":"replace", "content":"..."}]` | Réécrire entièrement |
+```html
+<!-- Modal conversation vocale -->
+<div id="voice-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000;">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white;">
 
-### Google Sheets
+        <!-- Bouton fermer -->
+        <button onclick="stopVoiceConversation()" style="position: absolute; top: 1.5rem; right: 1.5rem;">✕</button>
 
-| Commande | Format | Usage |
-|----------|--------|-------|
-| Modifier cellules | `[MODIFY_CELLS:{"file_id":"...", "updates":[{"cell":"A1", "value":"..."}, ...]}]` | Ajouter/modifier des données |
+        <!-- Nom du document -->
+        <div id="voice-doc-name"></div>
+
+        <!-- Bouton push-to-talk -->
+        <button id="push-to-talk-btn" onclick="toggleVoiceRecording()"
+                style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2);">
+            🎤
+        </button>
+
+        <!-- Status -->
+        <div id="voice-status">Appuyez pour parler</div>
+
+        <!-- Transcription -->
+        <div id="voice-transcription"></div>
+
+        <!-- Historique -->
+        <div id="voice-history"></div>
+    </div>
+</div>
+```
+
+### JavaScript Push-to-Talk
+
+```javascript
+let voiceConversationActive = false;
+let voiceMediaRecorder = null;
+let voiceAudioChunks = [];
+let voiceConversationHistory = [];
+let currentAudio = null;
+let isRecording = false;
+let isSpeaking = false;
+
+function startVoiceConversation() {
+    if (!selectedDocument) {
+        alert('Sélectionnez d\'abord un document.');
+        return;
+    }
+    document.getElementById('voice-modal').style.display = 'block';
+    document.getElementById('voice-doc-name').textContent = 'Document: ' + selectedDocument.name;
+    voiceConversationHistory = [];
+    voiceConversationActive = true;
+    updateVoiceUI('ready');
+}
+
+function stopVoiceConversation() {
+    voiceConversationActive = false;
+    if (currentAudio) currentAudio.pause();
+    if (voiceMediaRecorder?.state === 'recording') voiceMediaRecorder.stop();
+    document.getElementById('voice-modal').style.display = 'none';
+}
+
+function toggleVoiceRecording() {
+    // Si l'agent parle, l'interrompre
+    if (isSpeaking && currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+        isSpeaking = false;
+        startRecording();
+        return;
+    }
+
+    // Toggle enregistrement
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+async function startRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    voiceAudioChunks = [];
+    isRecording = true;
+    updateVoiceUI('recording');
+
+    voiceMediaRecorder.ondataavailable = (e) => voiceAudioChunks.push(e.data);
+    voiceMediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(voiceAudioChunks, { type: 'audio/webm' });
+        if (blob.size > 1000) await processVoiceInput(blob);
+        else updateVoiceUI('ready');
+    };
+
+    voiceMediaRecorder.start();
+}
+
+function stopRecording() {
+    isRecording = false;
+    voiceMediaRecorder?.stop();
+}
+
+function updateVoiceUI(state) {
+    const btn = document.getElementById('push-to-talk-btn');
+    const status = document.getElementById('voice-status');
+
+    const states = {
+        ready: { bg: '#667eea', text: 'Appuyez pour parler' },
+        recording: { bg: '#ef4444', text: 'Enregistrement... Appuyez pour envoyer' },
+        processing: { bg: '#f59e0b', text: 'Traitement...' },
+        speaking: { bg: '#10b981', text: 'L\'agent parle... Appuyez pour interrompre' }
+    };
+
+    btn.style.background = states[state].bg;
+    status.textContent = states[state].text;
+}
+
+async function processVoiceInput(audioBlob) {
+    updateVoiceUI('processing');
+
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('document', JSON.stringify(selectedDocument));
+    formData.append('history', JSON.stringify(voiceConversationHistory));
+
+    const response = await fetch('/voice-chat', { method: 'POST', body: formData });
+    const data = await response.json();
+
+    document.getElementById('voice-transcription').textContent = 'Vous: "' + data.transcription + '"';
+
+    voiceConversationHistory.push({ role: 'user', content: data.transcription });
+    voiceConversationHistory.push({ role: 'assistant', content: data.response });
+
+    // Jouer la réponse audio
+    if (data.audio) {
+        isSpeaking = true;
+        updateVoiceUI('speaking');
+        currentAudio = new Audio('data:audio/mp3;base64,' + data.audio);
+        currentAudio.onended = () => {
+            isSpeaking = false;
+            updateVoiceUI('ready');
+        };
+        currentAudio.play();
+    } else {
+        updateVoiceUI('ready');
+    }
+}
+```
+
+### États du bouton
+
+| État | Couleur | Action au clic |
+|------|---------|----------------|
+| **ready** | 🟣 Violet | Démarrer l'enregistrement |
+| **recording** | 🔴 Rouge | Arrêter et envoyer |
+| **processing** | 🟠 Orange | Attendre |
+| **speaking** | 🟢 Vert | Interrompre l'agent |
 
 ---
 
-## 12. Dépannage
+## 11. Variables d'environnement
 
-### Erreur "Access Denied"
+```bash
+# .env
 
-- Vérifiez que les APIs sont activées dans Google Cloud Console
-- Vérifiez que les scopes sont correctement configurés
-- L'utilisateur doit ré-autoriser si les scopes ont changé
+# Google OAuth
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=xxx
 
-### Erreur "Token expired"
+# URLs
+BASE_URL=http://localhost:5000
 
-- Le refresh_token est utilisé automatiquement
-- Si échec, redirigez vers `/auth/google/login`
+# OpenAI
+OPENAI_API_KEY=sk-xxx
 
-### Erreur "File not found"
+# Flask
+FLASK_SECRET_KEY=une-cle-secrete-aleatoire
+```
 
-- Vérifiez que l'utilisateur a accès au fichier
-- Le file_id doit être valide
+---
 
-### Les modifications ne s'appliquent pas
+## Résumé des commandes IA
 
-- Vérifiez les logs pour voir la commande générée
-- Testez la commande manuellement via l'API Google
-- Vérifiez que le format JSON est correct
+### Google Sheets
+```
+[MODIFY_CELLS:{"file_id":"xxx", "updates":[{"cell":"A1", "value":"xxx"}]}]
+```
 
-### L'IA ne génère pas les bonnes commandes
-
-- Ajustez le prompt système
-- Donnez plus d'exemples dans le prompt
-- Réduisez la température du modèle (0.3-0.5)
+### Google Docs
+```
+[REPLACE_TEXT:{"file_id":"xxx", "find":"...", "replace":"..."}]
+[INSERT_AFTER:{"file_id":"xxx", "after":"...", "content":"..."}]
+[DELETE_TEXT:{"file_id":"xxx", "text":"..."}]
+[MODIFY_DOC:{"file_id":"xxx", "action":"append", "content":"..."}]
+[MODIFY_DOC:{"file_id":"xxx", "action":"replace", "content":"..."}]
+```
 
 ---
 
 ## Support
 
-Pour toute question sur l'intégration, consultez :
-- [Documentation Google Drive API](https://developers.google.com/drive/api)
-- [Documentation Google Docs API](https://developers.google.com/docs/api)
-- [Documentation Google Sheets API](https://developers.google.com/sheets/api)
-- [Documentation OpenAI](https://platform.openai.com/docs)
+- [Google Drive API](https://developers.google.com/drive/api)
+- [Google Docs API](https://developers.google.com/docs/api)
+- [Google Sheets API](https://developers.google.com/sheets/api)
+- [OpenAI API](https://platform.openai.com/docs)
