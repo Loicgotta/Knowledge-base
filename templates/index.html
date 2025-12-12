@@ -1129,14 +1129,14 @@
         let currentAudio = null;
 
         function startVoiceConversation() {
-            if (!selectedEditorDoc) {
+            if (!selectedDocument) {
                 alert('Veuillez d\'abord selectionner un document.');
                 return;
             }
 
             // Show modal
             document.getElementById('voice-modal').style.display = 'block';
-            document.getElementById('voice-doc-name').textContent = 'Document: ' + selectedEditorDoc.name;
+            document.getElementById('voice-doc-name').textContent = 'Document: ' + selectedDocument.name;
             document.getElementById('voice-history').innerHTML = '';
             voiceConversationHistory = [];
             voiceConversationActive = true;
@@ -1258,7 +1258,7 @@
                 // Prepare form data
                 const formData = new FormData();
                 formData.append('audio', audioBlob, 'recording.webm');
-                formData.append('document', JSON.stringify(selectedEditorDoc));
+                formData.append('document', JSON.stringify(selectedDocument));
                 formData.append('history', JSON.stringify(voiceConversationHistory));
 
                 // Send to backend
