@@ -1628,6 +1628,88 @@ Si tu ne comprends pas exactement ce que l'utilisateur veut:
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/voice-chat-kb', methods=['POST'])
+def voice_chat_kb():
+    """
+    Endpoint pour conversation vocale avec la Knowledge Base
+    Reçoit: audio (fichier) + historique
+    Retourne: transcription + réponse RAG + audio de la réponse
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Vérifier qu'on a un fichier audio
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    audio_file = request.files['audio']
+    history_json = request.form.get('history', '[]')
+
+    try:
+        import json
+        import base64
+        import tempfile
+        from openai import OpenAI
+
+        history = json.loads(history_json)
+        client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+        # 1. SPEECH-TO-TEXT avec Whisper
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_audio_path = temp_audio.name
+
+        with open(temp_audio_path, 'rb') as audio:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio,
+                language="fr"
+            )
+
+        user_message = transcription.text
+        print(f"[voice-chat-kb] Transcription: {user_message}", flush=True)
+
+        # Nettoyer le fichier temporaire
+        os.unlink(temp_audio_path)
+
+        # 2. Utiliser le RAG pour répondre
+        rag = get_rag_engine()
+        stats = rag.get_stats()
+
+        if stats.get('status') == 'empty':
+            ai_answer = "Aucun document n'est indexé. Veuillez d'abord ajouter des documents depuis votre Google Drive."
+            sources = []
+        else:
+            result = rag.ask(user_message, history)
+            ai_answer = result.get('answer', "Désolé, je n'ai pas trouvé de réponse.")
+            sources = result.get('sources', [])
+
+        print(f"[voice-chat-kb] AI response: {ai_answer[:100]}...", flush=True)
+
+        # 3. TEXT-TO-SPEECH avec voix alloy
+        tts_response = client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=ai_answer,
+            response_format="mp3"
+        )
+
+        audio_base64 = base64.b64encode(tts_response.content).decode('utf-8')
+
+        return jsonify({
+            'status': 'success',
+            'transcription': user_message,
+            'response': ai_answer,
+            'sources': sources,
+            'audio': audio_base64
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[voice-chat-kb] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
 # ============== Error Handlers ==============
 
 @app.errorhandler(404)

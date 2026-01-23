@@ -3,179 +3,735 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drive Knowledge Base - Assistant IA</title>
+    <title>Friday - Knowledge Base</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary: #34a853;
-            --danger: #ea4335;
-            --warning: #fbbc05;
-            --bg-light: #f8f9fa;
-            --text-primary: #202124;
-            --text-secondary: #5f6368;
-            --border: #dadce0;
-            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --bg-dark: #0f0f0f;
+            --bg-sidebar: #1a1a1a;
+            --bg-card: #1e1e1e;
+            --bg-input: #2a2a2a;
+            --accent: #f97316;
+            --accent-hover: #ea580c;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1a1;
+            --text-muted: #6b6b6b;
+            --border: #2a2a2a;
+            --success: #22c55e;
+            --error: #ef4444;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-light);
+            background: var(--bg-dark);
             color: var(--text-primary);
             min-height: 100vh;
-        }
-        .header {
-            background: white;
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 100;
         }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
+
+        .sidebar-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
         .logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 1.25rem;
         }
-        .logo svg { width: 32px; height: 32px; }
-        .header-actions { display: flex; gap: 0.75rem; align-items: center; }
-        .btn {
-            padding: 0.625rem 1.25rem;
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
             border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .assistant-section {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .assistant-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .assistant-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            background: var(--bg-input);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .assistant-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .assistant-name {
+            flex: 1;
             font-weight: 500;
+        }
+
+        .conversations-section {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .conversations-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .conversations-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .conversations-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .conversation-item {
+            padding: 0.875rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .conversation-item:hover {
+            background: var(--bg-input);
+        }
+
+        .conversation-item.active {
+            background: var(--bg-input);
+            border-left-color: var(--accent);
+        }
+
+        .conversation-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .conversation-preview {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.25rem;
+        }
+
+        .conversation-date {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* ========== MAIN CONTENT ========== */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .main-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 1rem 1.25rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+
+        /* ========== KNOWLEDGE BASE CARD ========== */
+        .kb-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .kb-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kb-header {
+            padding: 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .kb-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+        }
+
+        .kb-icon {
+            color: var(--text-secondary);
+        }
+
+        .connect-drive-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .connect-drive-btn:hover {
+            background: var(--border);
+        }
+
+        .google-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Chat Section */
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .chat-label {
+            padding: 1rem 1.25rem 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .message-sender {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .message-content {
+            padding: 0.875rem 1rem;
+            border-radius: 12px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+
+        .message.user .message-content {
+            background: var(--accent);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .source-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .source-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 1rem;
+            background: var(--bg-input);
+            border-radius: 12px;
+            align-self: flex-start;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: none;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .chat-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .send-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .send-btn:disabled {
+            background: var(--bg-input);
+            cursor: not-allowed;
+        }
+
+        .mic-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .mic-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .mic-btn.recording {
+            background: var(--error);
+            border-color: var(--error);
+            color: white;
+            animation: pulse-mic 1.5s infinite;
+        }
+
+        .mic-btn.processing {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* ========== WELCOME STATE ========== */
+        .welcome-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .welcome-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--bg-input);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .welcome-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-text {
+            margin-bottom: 1.5rem;
+            max-width: 400px;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+        }
+
+        .suggestion {
+            padding: 0.625rem 1rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 20px;
             font-size: 0.875rem;
             cursor: pointer;
             transition: all 0.2s;
-            border: none;
+            color: var(--text-primary);
+        }
+
+        .suggestion:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* ========== LOGIN STATE ========== */
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 3rem;
+            text-align: center;
+            max-width: 450px;
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .login-text {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .login-btn {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
+            padding: 0.875rem 1.5rem;
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
             text-decoration: none;
         }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-secondary { background: white; color: var(--text-primary); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: var(--bg-light); }
-        .btn-success { background: var(--secondary); color: white; }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .container { max-width: 900px; margin: 0 auto; padding: 6rem 1.5rem 2rem; }
-        .login-section {
-            text-align: center;
-            padding: 4rem 2rem;
-            background: white;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            margin-top: 2rem;
+
+        .login-btn:hover {
+            background: var(--accent-hover);
         }
-        .login-section h1 { font-size: 2rem; margin-bottom: 1rem; }
-        .login-section p { color: var(--text-secondary); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; text-align: left; }
-        .feature { padding: 1.5rem; background: var(--bg-light); border-radius: 12px; }
-        .feature h3 { font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-        .feature p { font-size: 0.875rem; margin: 0; }
-        .chat-section {
+
+        /* ========== FOLDER BROWSER MODAL ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            width: 95%;
+            max-width: 600px;
+            max-height: 80vh;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 8rem);
-            background: white;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
         }
-        .chat-header {
-            padding: 1rem 1.5rem;
+
+        .modal-header {
+            padding: 1.25rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 0.5rem;
         }
-        .chat-header-left { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.375rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        .status-badge.ready { background: #e8f5e9; color: #2e7d32; }
-        .status-badge.empty { background: #fff3e0; color: #f57c00; }
-        .messages { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-        .message { max-width: 85%; padding: 1rem 1.25rem; border-radius: 16px; line-height: 1.5; }
-        .message.user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message.assistant { background: var(--bg-light); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; }
-        .message.assistant .sources { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-secondary); }
-        .message.system { background: #fff3cd; color: #856404; align-self: center; text-align: center; font-size: 0.875rem; }
-        .message.error { background: #f8d7da; color: #721c24; align-self: center; text-align: center; }
-        .typing-indicator { display: flex; gap: 4px; padding: 1rem; background: var(--bg-light); border-radius: 16px; align-self: flex-start; }
-        .typing-indicator span { width: 8px; height: 8px; background: var(--text-secondary); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-        .input-area { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; }
-        .input-area input { flex: 1; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 1rem; font-family: inherit; }
-        .input-area input:focus { outline: none; border-color: var(--primary); }
-        .welcome { text-align: center; padding: 3rem; color: var(--text-secondary); }
-        .welcome h2 { font-size: 1.5rem; color: var(--text-primary); margin-bottom: 0.5rem; }
-        .welcome p { margin-bottom: 1.5rem; }
-        .suggestions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
-        .suggestion { padding: 0.625rem 1rem; background: var(--bg-light); border: 1px solid var(--border); border-radius: 20px; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
-        .suggestion:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* Modal styles */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 200;
-            justify-content: center;
-            align-items: center;
+        .modal-title {
+            font-weight: 600;
         }
-        .modal-overlay.active { display: flex; }
-        .modal {
-            background: white;
-            border-radius: 16px;
-            padding: 1.5rem;
-            max-width: 600px;
-            width: 95%;
-            max-height: 85vh;
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 8px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
-        .modal h3 { margin-bottom: 1rem; text-align: center; }
-        .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* File browser styles */
-        .browser-header { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
-        .search-box { position: relative; }
-        .search-box input {
-            width: 100%;
-            padding: 0.75rem 1rem 0.75rem 2.5rem;
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .breadcrumb-item {
+            color: var(--accent);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .breadcrumb-item:hover {
+            background: var(--bg-input);
+        }
+
+        .breadcrumb-item.current {
+            color: var(--text-primary);
+            cursor: default;
+        }
+
+        .breadcrumb-sep {
+            color: var(--text-muted);
+        }
+
+        .file-list {
             border: 1px solid var(--border);
             border-radius: 8px;
-            font-size: 0.875rem;
+            max-height: 350px;
+            overflow-y: auto;
         }
-        .search-box input:focus { outline: none; border-color: var(--primary); }
-        .search-box svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
-        .breadcrumb { display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; flex-wrap: wrap; }
-        .breadcrumb-item { color: var(--primary); cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 4px; }
-        .breadcrumb-item:hover { background: var(--bg-light); }
-        .breadcrumb-item.current { color: var(--text-primary); cursor: default; }
-        .breadcrumb-item.current:hover { background: transparent; }
-        .breadcrumb-sep { color: var(--text-secondary); }
 
-        .file-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; min-height: 300px; max-height: 400px; }
         .file-item {
             padding: 0.75rem 1rem;
             display: flex;
@@ -185,331 +741,405 @@
             cursor: pointer;
             transition: background 0.15s;
         }
-        .file-item:last-child { border-bottom: none; }
-        .file-item:hover { background: var(--bg-light); }
-        .file-item.selected { background: #e3f2fd; }
-        .file-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-        .file-item .icon { width: 24px; height: 24px; flex-shrink: 0; }
-        .file-item .icon.folder { color: #fbbc05; }
-        .file-item .icon.file { color: var(--primary); }
-        .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .file-item .type { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
-        .file-item .enter-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; opacity: 0; transition: opacity 0.15s; }
-        .file-item:hover .enter-btn { opacity: 1; }
 
-        .selection-info { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-        .selection-count { font-size: 0.875rem; color: var(--text-secondary); }
-        .modal-actions { display: flex; gap: 0.75rem; }
+        .file-item:last-child {
+            border-bottom: none;
+        }
 
-        .indexed-docs { margin-top: 1rem; padding: 0.75rem; background: var(--bg-light); border-radius: 8px; font-size: 0.75rem; }
-        .indexed-docs summary { cursor: pointer; color: var(--text-secondary); }
-        .indexed-docs ul { margin-top: 0.5rem; padding-left: 1.5rem; max-height: 100px; overflow-y: auto; }
+        .file-item:hover {
+            background: var(--bg-input);
+        }
 
-        .empty-state { padding: 2rem; text-align: center; color: var(--text-secondary); }
+        .file-item.selected {
+            background: rgba(249, 115, 22, 0.1);
+        }
 
-        @media (max-width: 640px) {
-            .header { padding: 1rem; }
-            .header-actions { flex-wrap: wrap; }
-            .container { padding: 5rem 1rem 1rem; }
-            .chat-section { height: calc(100vh - 6rem); border-radius: 0; }
-            .message { max-width: 95%; }
-            .features { grid-template-columns: 1fr; }
+        .file-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .file-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .file-icon.folder {
+            color: #fbbc05;
+        }
+
+        .file-icon.file {
+            color: var(--accent);
+        }
+
+        .file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-type {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .folder-enter {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .file-item:hover .folder-enter {
+            opacity: 1;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .selection-count {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-primary:disabled {
+            background: var(--bg-input);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* ========== SYNC MODAL ========== */
+        .sync-content {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ========== STATUS BADGE ========== */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-badge.ready {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+
+        .status-badge.empty {
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--accent);
+        }
+
+        /* ========== MOBILE ========== */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .message {
+                max-width: 90%;
+            }
         }
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="logo">
-            <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-            </svg>
-            Drive Knowledge Base
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">F</div>
+                <span>Friday</span>
+            </div>
         </div>
-        <div class="header-actions">
-            {% if authenticated %}
-                <button class="btn btn-secondary" onclick="openFileBrowser()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                        <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
-                    </svg>
-                    Ajouter des documents
-                </button>
-                <button class="btn btn-secondary" onclick="openDocEditor()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                    Editer un document
-                </button>
-                <a href="/logout" class="btn btn-secondary">Deconnexion</a>
-            {% else %}
-                <a href="/login" class="btn btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+        <div class="assistant-section">
+            <div class="assistant-label">Votre assistant IA</div>
+            <div class="assistant-selector">
+                <div class="assistant-avatar">🤖</div>
+                <span class="assistant-name">Friday</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="conversations-section">
+            <div class="conversations-header">
+                <span class="conversations-title">Conversations récentes</span>
+                <div class="conversations-actions">
+                    <button class="icon-btn" title="Nouvelle conversation">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="clearIndex()" title="Vider l'index">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="conversations-list">
+                <!-- Conversations will be added here -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <header class="main-header">
+            <button class="back-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            </button>
+            <h1 class="main-title">Discutez avec l'équipe de Friday</h1>
+            <div class="header-right">
+                {% if authenticated %}
+                <span class="status-badge {% if stats and stats.status == 'ready' %}ready{% else %}empty{% endif %}">
+                    {% if stats and stats.status == 'ready' %}
+                        {{ stats.total_chunks }} chunks indexés
+                    {% else %}
+                        Aucun document
+                    {% endif %}
+                </span>
+                {% endif %}
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <div class="tab">Discussion</div>
+            <div class="tab active">Knowledge Base</div>
+            <div class="tab">Tâches</div>
+        </nav>
+
+        {% if not authenticated %}
+        <!-- LOGIN STATE -->
+        <div class="login-container">
+            <div class="login-card">
+                <svg class="login-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                    <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                    <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                    <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                    <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                    <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                    <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                </svg>
+                <h2 class="login-title">Knowledge Base IA</h2>
+                <p class="login-text">Connectez votre Google Drive pour poser des questions sur vos documents. Notre IA analyse et trouve les réponses.</p>
+                <a href="/login" class="login-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
                         <polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
                     </svg>
-                    Connexion avec Google
+                    Se connecter avec Google
                 </a>
-            {% endif %}
+            </div>
         </div>
-    </header>
-
-    <main class="container">
-        {% if not authenticated %}
-        <section class="login-section">
-            <h1>Assistant IA pour vos documents Drive</h1>
-            <p>Connectez votre Google Drive, selectionnez vos documents et posez des questions. Notre IA analyse et trouve les reponses.</p>
-            <a href="/login" class="btn btn-primary" style="font-size: 1rem; padding: 1rem 2rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                    <polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
-                </svg>
-                Se connecter avec Google
-            </a>
-            <div class="features">
-                <div class="feature">
-                    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Selection flexible</h3>
-                    <p>Choisissez des fichiers ou dossiers entiers</p>
-                </div>
-                <div class="feature">
-                    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34a853" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Recherche intelligente</h3>
-                    <p>Technologie RAG pour des reponses precises</p>
-                </div>
-                <div class="feature">
-                    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbc05" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Multi-formats</h3>
-                    <p>PDF, Docs, Sheets, Excel et plus</p>
-                </div>
-            </div>
-        </section>
         {% else %}
-        <section class="chat-section">
-            <div class="chat-header">
-                <div class="chat-header-left">
-                    <strong>Assistant Knowledge Base</strong>
-                    {% if stats %}
-                        {% if stats.status == 'ready' %}
-                            <span class="status-badge ready">{{ stats.total_chunks }} chunks indexes</span>
-                        {% elif stats.status == 'empty' %}
-                            <span class="status-badge empty">Aucun document</span>
-                        {% endif %}
-                    {% endif %}
+        <!-- KNOWLEDGE BASE CARD -->
+        <div class="kb-container">
+            <div class="kb-card">
+                <div class="kb-header">
+                    <div class="kb-title">
+                        <svg class="kb-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        Knowledge Base
+                    </div>
+                    <button class="connect-drive-btn" onclick="openFileBrowser()">
+                        <svg class="google-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                        </svg>
+                        Connecter Google Drive
+                    </button>
                 </div>
-                <button class="btn btn-secondary" onclick="clearIndex()" style="font-size: 0.75rem; padding: 0.5rem 0.75rem;">Reinitialiser</button>
-            </div>
 
-            <div class="messages" id="messages">
-                <div class="welcome" id="welcome">
-                    <h2>Bienvenue !</h2>
-                    {% if stats and stats.status == 'empty' %}
-                        <p>Commencez par ajouter des documents depuis votre Drive</p>
-                        <button class="btn btn-primary" onclick="openFileBrowser()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                                <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
-                            </svg>
-                            Parcourir mon Drive
-                        </button>
-                    {% else %}
-                        <p>Posez une question sur vos documents</p>
-                        <div class="suggestions">
-                            <span class="suggestion" onclick="askQuestion(this.textContent)">Resume les documents principaux</span>
-                            <span class="suggestion" onclick="askQuestion(this.textContent)">Quels sont les sujets abordes ?</span>
-                            <span class="suggestion" onclick="askQuestion(this.textContent)">Trouve les informations importantes</span>
+                <div class="chat-section">
+                    <div class="chat-label">Conversation</div>
+
+                    <div class="messages" id="messages">
+                        {% if not stats or stats.status == 'empty' %}
+                        <div class="welcome-state" id="welcome">
+                            <div class="welcome-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                </svg>
+                            </div>
+                            <h3 class="welcome-title">Bienvenue !</h3>
+                            <p class="welcome-text">Commencez par connecter votre Google Drive et sélectionner des documents à indexer.</p>
+                            <button class="btn btn-primary" onclick="openFileBrowser()">
+                                Parcourir mon Drive
+                            </button>
                         </div>
-                    {% endif %}
-                </div>
-            </div>
+                        {% else %}
+                        <div class="welcome-state" id="welcome">
+                            <div class="welcome-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                            </div>
+                            <h3 class="welcome-title">Posez une question</h3>
+                            <p class="welcome-text">Interrogez vos documents en langage naturel</p>
+                            <div class="suggestions">
+                                <span class="suggestion" onclick="askQuestion(this.textContent)">Résume les documents principaux</span>
+                                <span class="suggestion" onclick="askQuestion(this.textContent)">Quels sont les points clés ?</span>
+                                <span class="suggestion" onclick="askQuestion(this.textContent)">Trouve les informations importantes</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
 
-            <div class="input-area">
-                <input type="text" id="user-input" placeholder="Posez votre question..." onkeypress="handleKeyPress(event)">
-                <button class="btn btn-primary" onclick="sendMessage()">Envoyer</button>
-            </div>
-        </section>
-        {% endif %}
-    </main>
-
-    <!-- File Browser Modal -->
-    <div class="modal-overlay" id="browser-modal">
-        <div class="modal">
-            <h3>Parcourir Google Drive</h3>
-
-            <div class="browser-header">
-                <div class="search-box">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    <input type="text" id="search-input" placeholder="Rechercher..." oninput="filterItems()">
-                </div>
-                <div class="breadcrumb" id="breadcrumb">
-                    <span class="breadcrumb-item current">Mon Drive</span>
-                </div>
-            </div>
-
-            <div id="browser-loading" style="text-align: center; padding: 3rem;">
-                <div class="spinner"></div>
-                <p>Chargement...</p>
-            </div>
-
-            <div id="browser-content" style="display: none;">
-                <div class="file-list" id="file-list"></div>
-
-                <details class="indexed-docs" id="indexed-docs-section">
-                    <summary>Documents deja indexes (<span id="indexed-count">0</span>)</summary>
-                    <ul id="indexed-list"></ul>
-                </details>
-
-                <div class="selection-info">
-                    <span class="selection-count"><span id="selection-count">0</span> element(s) selectionne(s)</span>
-                    <div class="modal-actions">
-                        <button class="btn btn-secondary" onclick="closeFileBrowser()">Annuler</button>
-                        <button class="btn btn-success" onclick="addSelectedDocuments()" id="add-btn" disabled>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    <div class="input-area">
+                        <div class="input-wrapper">
+                            <input type="text" class="chat-input" id="user-input" placeholder="Posez votre question..." onkeypress="handleKeyPress(event)">
+                        </div>
+                        <button class="mic-btn" id="mic-btn" onclick="toggleMicrophone()" title="Enregistrer un message vocal">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
                             </svg>
-                            Ajouter
+                        </button>
+                        <button class="send-btn" onclick="sendMessage()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+        {% endif %}
+    </main>
 
-    <!-- Sync Modal -->
-    <div class="modal-overlay" id="sync-modal">
-        <div class="modal" style="text-align: center;">
-            <div class="spinner"></div>
-            <h3>Indexation en cours...</h3>
-            <p id="sync-status">Traitement des documents...</p>
-            <button class="btn btn-secondary" id="close-sync-modal" style="display: none; margin-top: 1rem;" onclick="closeSyncModal()">Fermer</button>
-        </div>
-    </div>
-
-    <!-- Document Editor Chat Modal -->
-    <div class="modal-overlay" id="editor-modal">
-        <div class="modal" style="max-width: 700px; height: 85vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
-                <h3 style="margin: 0;">Editer un document</h3>
-                <button class="btn btn-secondary" onclick="closeDocEditor()" style="padding: 0.5rem 0.75rem;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <!-- FILE BROWSER MODAL -->
+    <div class="modal-overlay" id="browser-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Parcourir Google Drive</h3>
+                <button class="modal-close" onclick="closeFileBrowser()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                 </button>
             </div>
 
-            <div id="editor-loading" style="text-align: center; padding: 2rem;">
-                <div class="spinner"></div>
-                <p>Chargement de vos documents...</p>
+            <div class="modal-body">
+                <div id="browser-loading" style="text-align: center; padding: 3rem;">
+                    <div class="spinner"></div>
+                    <p style="color: var(--text-secondary);">Chargement...</p>
+                </div>
+
+                <div id="browser-content" style="display: none;">
+                    <div class="breadcrumb" id="breadcrumb">
+                        <span class="breadcrumb-item current">Mon Drive</span>
+                    </div>
+                    <div class="file-list" id="file-list"></div>
+                </div>
             </div>
 
-            <div id="editor-chat-content" style="display: none; flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <!-- Document Selector -->
-                <div style="margin-bottom: 1rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">1. Selectionnez le document a modifier :</label>
-                    <select id="doc-selector" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: white;" onchange="onDocumentSelected()">
-                        <option value="">-- Choisir un document --</option>
-                    </select>
-                </div>
-
-                <!-- Selected doc info -->
-                <div id="selected-doc-info" style="display: none; background: #e3f2fd; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
-                    <strong>Document selectionne :</strong> <span id="selected-doc-name"></span>
-                </div>
-
-                <!-- Chat section (hidden until doc selected) -->
-                <div id="chat-section" style="display: none; flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">2. Dites-moi ce que vous voulez faire :</label>
-
-                    <!-- Chat messages -->
-                    <div id="editor-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem; background: var(--bg-light); border-radius: 8px; min-height: 200px;">
-                    </div>
-
-                    <!-- Input area -->
-                    <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
-                        <input type="text" id="editor-input" placeholder="Ex: Ajoute une section conclusion..." style="flex: 1; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 0.95rem;" onkeypress="handleEditorKeyPress(event)">
-                        <button class="btn btn-secondary" onclick="toggleMicrophone()" id="mic-btn" title="Note vocale">
-                            <svg id="mic-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-                            </svg>
-                        </button>
-                        <button class="btn btn-primary" onclick="sendEditorMessage()" id="send-editor-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Voice conversation button -->
-                    <button class="btn" onclick="startVoiceConversation()" id="start-voice-btn" style="margin-top: 0.75rem; width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.875rem; font-weight: 600;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        </svg>
-                        Demarrer une conversation vocale
-                    </button>
-                </div>
-
-                <!-- Placeholder when no doc selected -->
-                <div id="no-doc-placeholder" style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); text-align: center;">
-                    <div>
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        <p>Selectionnez un document ci-dessus pour commencer</p>
-                    </div>
+            <div class="modal-footer">
+                <span class="selection-count"><span id="selection-count">0</span> élément(s) sélectionné(s)</span>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeFileBrowser()">Annuler</button>
+                    <button class="btn btn-primary" onclick="addSelectedDocuments()" id="add-btn" disabled>Ajouter</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Voice Conversation Modal -->
-    <div id="voice-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(10px);">
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; padding: 2rem;">
-
-            <!-- Close button -->
-            <button onclick="stopVoiceConversation()" style="position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.1); border: none; color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 1.5rem;">
-                ✕
-            </button>
-
-            <!-- Document name -->
-            <div id="voice-doc-name" style="font-size: 0.9rem; opacity: 0.7; margin-bottom: 1rem;"></div>
-
-            <!-- Main push-to-talk button -->
-            <button id="push-to-talk-btn" onclick="toggleVoiceRecording()" style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; transition: transform 0.2s, box-shadow 0.2s, background 0.2s;">
-                <svg id="ptt-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-            </button>
-
-            <!-- Status text -->
-            <div id="voice-status" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
-                Appuyez pour parler
-            </div>
-
-            <!-- Transcription display -->
-            <div id="voice-transcription" style="font-size: 1rem; opacity: 0.8; max-width: 500px; text-align: center; min-height: 2rem;">
-            </div>
-
-            <!-- Response display -->
-            <div id="voice-response" style="font-size: 1.1rem; margin-top: 1.5rem; max-width: 600px; text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 12px; min-height: 3rem; display: none;">
-            </div>
-
-            <!-- Conversation history in modal -->
-            <div id="voice-history" style="margin-top: 2rem; max-width: 600px; width: 100%; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
-            </div>
-
-            <!-- Instructions -->
-            <div style="position: absolute; bottom: 2rem; font-size: 0.85rem; opacity: 0.5;">
-                Appuyez pour parler • Appuyez pour envoyer • Cliquez ✕ pour terminer
+    <!-- SYNC MODAL -->
+    <div class="modal-overlay" id="sync-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="sync-content">
+                <div class="spinner"></div>
+                <h3 style="margin-bottom: 0.5rem;">Indexation en cours...</h3>
+                <p id="sync-status" style="color: var(--text-secondary);">Traitement des documents...</p>
             </div>
         </div>
     </div>
@@ -521,6 +1151,8 @@
         let allItems = [];
         let selectedItems = new Map();
         let indexedDocuments = [];
+
+        // ========== CHAT FUNCTIONS ==========
 
         function askQuestion(text) {
             document.getElementById('user-input').value = text;
@@ -559,10 +1191,7 @@
                 } else if (data.needs_sync) {
                     addMessage(data.answer, 'system');
                 } else {
-                    let answerHtml = data.answer;
-                    if (data.sources && data.sources.length > 0) {
-                        answerHtml += `<div class="sources"><strong>Sources:</strong> ${data.sources.join(', ')}</div>`;
-                    }
+                    let answerHtml = formatAnswer(data.answer, data.sources);
                     addMessage(answerHtml, 'assistant', true);
                     conversationHistory.push({ role: 'user', content: message });
                     conversationHistory.push({ role: 'assistant', content: data.answer });
@@ -573,14 +1202,43 @@
             }
         }
 
+        function formatAnswer(answer, sources) {
+            // Convert source references to links
+            if (sources && sources.length > 0) {
+                sources.forEach(source => {
+                    const regex = new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    answer = answer.replace(regex, `<a href="#" class="source-link">${source}</a>`);
+                });
+            }
+            return answer;
+        }
+
         function addMessage(content, type, isHtml = false) {
             const messages = document.getElementById('messages');
             const div = document.createElement('div');
             div.className = `message ${type}`;
-            if (isHtml) div.innerHTML = content;
-            else div.textContent = content;
+
+            const senderLabel = type === 'user' ? 'Vous' : 'Knowledge Base';
+            const senderIcon = type === 'assistant' ? `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+            ` : '';
+
+            div.innerHTML = `
+                <div class="message-sender">${senderIcon}${senderLabel}</div>
+                <div class="message-content">${isHtml ? content : escapeHtml(content)}</div>
+            `;
+
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function showTyping() {
@@ -599,6 +1257,110 @@
             if (el) el.remove();
         }
 
+        // ========== VOICE FUNCTIONS ==========
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        function toggleMicrophone() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+                isRecording = true;
+
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.add('recording');
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    micBtn.classList.remove('recording');
+                    micBtn.classList.add('processing');
+
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+                    if (audioBlob.size > 1000) {
+                        await processVoiceMessage(audioBlob);
+                    }
+
+                    micBtn.classList.remove('processing');
+                };
+
+                mediaRecorder.start();
+            } catch (error) {
+                console.error('Microphone error:', error);
+                alert('Impossible d\'accéder au microphone.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                isRecording = false;
+                mediaRecorder.stop();
+            }
+        }
+
+        async function processVoiceMessage(audioBlob) {
+            const welcome = document.getElementById('welcome');
+            if (welcome) welcome.remove();
+
+            const typingId = showTyping();
+
+            try {
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.webm');
+                formData.append('history', JSON.stringify(conversationHistory));
+
+                const response = await fetch('/voice-chat-kb', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                removeTyping(typingId);
+
+                if (data.error) {
+                    addMessage(data.error, 'error');
+                    return;
+                }
+
+                // Show transcription
+                addMessage(data.transcription, 'user');
+
+                // Show answer
+                let answerHtml = formatAnswer(data.response, data.sources);
+                addMessage(answerHtml, 'assistant', true);
+
+                conversationHistory.push({ role: 'user', content: data.transcription });
+                conversationHistory.push({ role: 'assistant', content: data.response });
+
+                // Play audio response if available
+                if (data.audio) {
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    audio.play();
+                }
+
+            } catch (error) {
+                removeTyping(typingId);
+                addMessage('Erreur de connexion.', 'error');
+            }
+        }
+
+        // ========== FILE BROWSER FUNCTIONS ==========
+
         async function openFileBrowser() {
             const modal = document.getElementById('browser-modal');
             modal.classList.add('active');
@@ -608,28 +1370,11 @@
             selectedItems.clear();
             updateSelectionCount();
 
-            await loadIndexedDocuments();
             await loadFolderContents(null);
         }
 
         function closeFileBrowser() {
             document.getElementById('browser-modal').classList.remove('active');
-            document.getElementById('search-input').value = '';
-        }
-
-        async function loadIndexedDocuments() {
-            try {
-                const response = await fetch('/indexed-documents');
-                const data = await response.json();
-                if (data.status === 'success') {
-                    indexedDocuments = data.documents;
-                    document.getElementById('indexed-count').textContent = data.count;
-                    const list = document.getElementById('indexed-list');
-                    list.innerHTML = indexedDocuments.map(d => `<li>${d}</li>`).join('');
-                }
-            } catch (e) {
-                console.error('Error loading indexed docs:', e);
-            }
         }
 
         async function loadFolderContents(folderId) {
@@ -655,7 +1400,7 @@
                 content.style.display = 'block';
             } catch (e) {
                 console.error('Error loading folder:', e);
-                loading.innerHTML = '<p style="color: var(--danger);">Erreur de chargement</p>';
+                loading.innerHTML = '<p style="color: var(--error);">Erreur de chargement</p>';
             }
         }
 
@@ -663,37 +1408,30 @@
             const list = document.getElementById('file-list');
 
             if (items.length === 0) {
-                list.innerHTML = '<div class="empty-state">Aucun element</div>';
+                list.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted);">Aucun élément</div>';
                 return;
             }
 
             list.innerHTML = items.map(item => {
                 const isFolder = item.type === 'folder';
                 const isSelected = selectedItems.has(item.id);
-                const isIndexed = indexedDocuments.includes(item.name);
                 const ext = item.name.split('.').pop().toUpperCase();
 
                 return `
-                    <div class="file-item ${isSelected ? 'selected' : ''}" data-id="${item.id}" data-type="${item.type}" data-name="${item.name}">
+                    <div class="file-item ${isSelected ? 'selected' : ''}" data-id="${item.id}">
                         <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelection(event, '${item.id}', '${item.type}', '${item.name.replace(/'/g, "\\'")}')">
                         ${isFolder ?
-                            `<svg class="icon folder" viewBox="0 0 24 24" fill="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` :
-                            `<svg class="icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
+                            `<svg class="file-icon folder" viewBox="0 0 24 24" fill="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` :
+                            `<svg class="file-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
                         }
-                        <span class="name">${item.name}${isIndexed ? ' ✓' : ''}</span>
+                        <span class="file-name">${item.name}</span>
                         ${isFolder ?
-                            `<button class="btn btn-secondary enter-btn" onclick="enterFolder(event, '${item.id}', '${item.name.replace(/'/g, "\\'")}')">Ouvrir</button>` :
-                            `<span class="type">${ext}</span>`
+                            `<button class="folder-enter" onclick="enterFolder(event, '${item.id}', '${item.name.replace(/'/g, "\\'")}')">Ouvrir</button>` :
+                            `<span class="file-type">${ext}</span>`
                         }
                     </div>
                 `;
             }).join('');
-        }
-
-        function filterItems() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            const filtered = allItems.filter(item => item.name.toLowerCase().includes(query));
-            renderItems(filtered);
         }
 
         function toggleSelection(event, id, type, name) {
@@ -746,7 +1484,7 @@
             const syncModal = document.getElementById('sync-modal');
             const syncStatus = document.getElementById('sync-status');
             syncModal.classList.add('active');
-            syncStatus.textContent = `Indexation de ${selectedItems.size} element(s)...`;
+            syncStatus.textContent = `Indexation de ${selectedItems.size} élément(s)...`;
 
             try {
                 const items = Array.from(selectedItems.values());
@@ -756,34 +1494,13 @@
                     body: JSON.stringify({ items })
                 });
 
-                // Verifier si c'est une erreur 502
-                if (response.status === 502) {
-                    throw new Error(`Erreur serveur (HTTP 502). Le serveur n'a pas pu traiter la demande. Verifiez les logs Render pour plus de details.`);
-                }
-
-                // Lire la reponse brute d'abord
-                const responseText = await response.text();
-                let data;
-
-                try {
-                    data = JSON.parse(responseText);
-                } catch (parseError) {
-                    // Si ce n'est pas du JSON, afficher la reponse brute
-                    throw new Error(`Reponse serveur invalide (HTTP ${response.status}):\n\n${responseText}`);
-                }
+                const data = await response.json();
 
                 if (data.error) {
-                    // Afficher l'erreur complete directement sur l'ecran
-                    let errorMsg = `ERREUR: ${data.error_type || 'Unknown'}\n\n${data.error}`;
-                    if (data.traceback) {
-                        errorMsg += `\n\n--- TRACEBACK COMPLET ---\n${data.traceback}`;
-                    }
-                    syncModal.querySelector('.modal').style.maxWidth = '90%';
-                    syncModal.querySelector('.modal').style.maxHeight = '90vh';
-                    syncModal.querySelector('.spinner').style.display = 'none';
-                    syncModal.querySelector('h3').textContent = 'ERREUR';
-                    document.getElementById('close-sync-modal').style.display = 'inline-block';
-                    syncStatus.innerHTML = `<pre style="color: var(--danger); white-space: pre-wrap; font-size: 0.75rem; text-align: left; max-height: 60vh; overflow-y: auto; background: #fff5f5; padding: 1rem; border-radius: 8px; border: 2px solid var(--danger);">${errorMsg}</pre>`;
+                    syncStatus.textContent = 'Erreur: ' + data.error;
+                    setTimeout(() => {
+                        syncModal.classList.remove('active');
+                    }, 3000);
                 } else {
                     syncStatus.textContent = data.message;
                     setTimeout(() => {
@@ -793,29 +1510,15 @@
                 }
 
             } catch (error) {
-                syncModal.querySelector('.modal').style.maxWidth = '90%';
-                syncModal.querySelector('.modal').style.maxHeight = '90vh';
-                syncModal.querySelector('.spinner').style.display = 'none';
-                syncModal.querySelector('h3').textContent = 'ERREUR';
-                document.getElementById('close-sync-modal').style.display = 'inline-block';
-                syncStatus.innerHTML = `<pre style="color: var(--danger); white-space: pre-wrap; font-size: 0.75rem; text-align: left; max-height: 60vh; overflow-y: auto; background: #fff5f5; padding: 1rem; border-radius: 8px; border: 2px solid var(--danger);">ERREUR:\n\n${error.message || error}</pre>`;
+                syncStatus.textContent = 'Erreur de connexion';
+                setTimeout(() => {
+                    syncModal.classList.remove('active');
+                }, 3000);
             }
         }
 
-        function closeSyncModal() {
-            const syncModal = document.getElementById('sync-modal');
-            syncModal.classList.remove('active');
-            // Reset modal state
-            syncModal.querySelector('.modal').style.maxWidth = '';
-            syncModal.querySelector('.modal').style.maxHeight = '';
-            syncModal.querySelector('.spinner').style.display = 'block';
-            syncModal.querySelector('h3').textContent = 'Indexation en cours...';
-            document.getElementById('sync-status').textContent = 'Traitement des documents...';
-            document.getElementById('close-sync-modal').style.display = 'none';
-        }
-
         async function clearIndex() {
-            if (!confirm('Supprimer tous les documents indexes ?')) return;
+            if (!confirm('Supprimer tous les documents indexés ?')) return;
 
             try {
                 const response = await fetch('/clear', { method: 'POST' });
@@ -826,582 +1529,6 @@
                 alert('Erreur de connexion');
             }
         }
-
-        // ========== Document Editor Chat Functions ==========
-        let editableDocuments = [];
-        let editorConversationHistory = [];
-        let selectedDocument = null;
-
-        async function openDocEditor() {
-            const modal = document.getElementById('editor-modal');
-            const loading = document.getElementById('editor-loading');
-            const content = document.getElementById('editor-chat-content');
-
-            modal.classList.add('active');
-            loading.style.display = 'block';
-            content.style.display = 'none';
-
-            // Reset state
-            selectedDocument = null;
-            editorConversationHistory = [];
-
-            try {
-                const response = await fetch('/list-editable-documents');
-                const data = await response.json();
-
-                if (data.status === 'success') {
-                    editableDocuments = data.documents;
-                    populateDocumentSelector();
-                    resetEditorUI();
-                    loading.style.display = 'none';
-                    content.style.display = 'flex';
-                } else {
-                    alert('Erreur: ' + data.error);
-                    closeDocEditor();
-                }
-            } catch (error) {
-                alert('Erreur de connexion');
-                closeDocEditor();
-            }
-        }
-
-        function populateDocumentSelector() {
-            const selector = document.getElementById('doc-selector');
-            selector.innerHTML = '<option value="">-- Choisir un document --</option>';
-
-            const docTypes = {
-                'application/vnd.google-apps.document': 'Google Doc',
-                'application/vnd.google-apps.spreadsheet': 'Google Sheet',
-                'application/vnd.google-apps.presentation': 'Google Slides'
-            };
-
-            editableDocuments.forEach(doc => {
-                const option = document.createElement('option');
-                option.value = doc.id;
-                const type = docTypes[doc.mimeType] || 'Fichier';
-                option.textContent = `${doc.name} [${type}]`;
-                option.dataset.name = doc.name;
-                option.dataset.mimeType = doc.mimeType;
-                selector.appendChild(option);
-            });
-        }
-
-        function onDocumentSelected() {
-            const selector = document.getElementById('doc-selector');
-            const selectedOption = selector.options[selector.selectedIndex];
-
-            if (!selector.value) {
-                selectedDocument = null;
-                document.getElementById('selected-doc-info').style.display = 'none';
-                document.getElementById('chat-section').style.display = 'none';
-                document.getElementById('no-doc-placeholder').style.display = 'flex';
-                return;
-            }
-
-            selectedDocument = {
-                id: selector.value,
-                name: selectedOption.dataset.name,
-                mimeType: selectedOption.dataset.mimeType
-            };
-
-            // Show selected doc info
-            document.getElementById('selected-doc-name').textContent = selectedDocument.name;
-            document.getElementById('selected-doc-info').style.display = 'block';
-
-            // Show chat section
-            document.getElementById('no-doc-placeholder').style.display = 'none';
-            document.getElementById('chat-section').style.display = 'flex';
-
-            // Reset chat with welcome message
-            editorConversationHistory = [];
-            const docType = getDocTypeName(selectedDocument.mimeType);
-            document.getElementById('editor-messages').innerHTML = `
-                <div class="message assistant">
-                    Document <strong>${selectedDocument.name}</strong> selectionne.<br><br>
-                    Que voulez-vous faire ? Par exemple :<br>
-                    • "Ajoute une section conclusion"<br>
-                    • "Ecris un resume du projet"<br>
-                    • "Ajoute les points suivants : ..."
-                </div>
-            `;
-
-            document.getElementById('editor-input').focus();
-        }
-
-        function getDocTypeName(mimeType) {
-            if (mimeType.includes('document')) return 'Google Doc';
-            if (mimeType.includes('spreadsheet')) return 'Google Sheet';
-            if (mimeType.includes('presentation')) return 'Google Slides';
-            return 'document';
-        }
-
-        function resetEditorUI() {
-            document.getElementById('doc-selector').value = '';
-            document.getElementById('selected-doc-info').style.display = 'none';
-            document.getElementById('chat-section').style.display = 'none';
-            document.getElementById('no-doc-placeholder').style.display = 'flex';
-            document.getElementById('editor-messages').innerHTML = '';
-            document.getElementById('editor-input').value = '';
-        }
-
-        function closeDocEditor() {
-            document.getElementById('editor-modal').classList.remove('active');
-            selectedDocument = null;
-        }
-
-        function handleEditorKeyPress(event) {
-            if (event.key === 'Enter') sendEditorMessage();
-        }
-
-        async function sendEditorMessage() {
-            if (!selectedDocument) {
-                alert('Veuillez d\'abord selectionner un document');
-                return;
-            }
-
-            const input = document.getElementById('editor-input');
-            const message = input.value.trim();
-            if (!message) return;
-
-            const messagesContainer = document.getElementById('editor-messages');
-
-            // Add user message
-            const userDiv = document.createElement('div');
-            userDiv.className = 'message user';
-            userDiv.textContent = message;
-            messagesContainer.appendChild(userDiv);
-
-            input.value = '';
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Show typing indicator
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'typing-indicator';
-            typingDiv.innerHTML = '<span></span><span></span><span></span>';
-            messagesContainer.appendChild(typingDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            try {
-                // Send message with selected document context
-                const response = await fetch('/chat-edit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message,
-                        document: selectedDocument,
-                        history: editorConversationHistory
-                    })
-                });
-
-                const data = await response.json();
-                typingDiv.remove();
-
-                const assistantDiv = document.createElement('div');
-                assistantDiv.className = 'message assistant';
-
-                if (data.error) {
-                    assistantDiv.className = 'message error';
-                    assistantDiv.textContent = data.error;
-                } else {
-                    assistantDiv.innerHTML = data.answer;
-
-                    // Show modification status if any
-                    if (data.modification_result) {
-                        const statusDiv = document.createElement('div');
-                        statusDiv.style.cssText = 'margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem;';
-                        if (data.modification_result.status === 'success') {
-                            statusDiv.style.background = '#e8f5e9';
-                            statusDiv.style.color = '#2e7d32';
-                            statusDiv.innerHTML = '&#10003; ' + data.modification_result.message;
-                        } else {
-                            statusDiv.style.background = '#ffebee';
-                            statusDiv.style.color = '#c62828';
-                            statusDiv.innerHTML = '&#10007; Erreur: ' + data.modification_result.message;
-                        }
-                        assistantDiv.appendChild(statusDiv);
-                    }
-
-                    editorConversationHistory.push({ role: 'user', content: message });
-                    editorConversationHistory.push({ role: 'assistant', content: data.answer });
-                }
-
-                messagesContainer.appendChild(assistantDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                // Text-to-Speech if voice mode is enabled
-                if (voiceModeEnabled && data.answer) {
-                    speakText(data.answer);
-                }
-
-            } catch (error) {
-                typingDiv.remove();
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'message error';
-                errorDiv.textContent = 'Erreur de connexion';
-                messagesContainer.appendChild(errorDiv);
-            }
-        }
-
-        // ========== Voice Functions ==========
-        let recognition = null;
-        let isListening = false;
-
-        function toggleMicrophone() {
-            if (isListening) {
-                stopListening();
-            } else {
-                startListening();
-            }
-        }
-
-        function startListening() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('La reconnaissance vocale n\'est pas supportee par votre navigateur. Utilisez Chrome.');
-                return;
-            }
-
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'fr-FR';
-            recognition.continuous = false;
-            recognition.interimResults = true;
-
-            const micBtn = document.getElementById('mic-btn');
-            const input = document.getElementById('editor-input');
-
-            recognition.onstart = () => {
-                isListening = true;
-                micBtn.style.background = '#ef4444';
-                micBtn.style.color = 'white';
-                input.placeholder = 'Parlez maintenant...';
-            };
-
-            recognition.onresult = (event) => {
-                let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    transcript += event.results[i][0].transcript;
-                }
-                input.value = transcript;
-
-                if (event.results[event.results.length - 1].isFinal) {
-                    setTimeout(() => {
-                        if (input.value.trim()) {
-                            sendEditorMessage();
-                        }
-                    }, 500);
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                stopListening();
-                if (event.error === 'not-allowed') {
-                    alert('Acces au microphone refuse. Autorisez l\'acces dans les parametres du navigateur.');
-                }
-            };
-
-            recognition.onend = () => {
-                stopListening();
-            };
-
-            recognition.start();
-        }
-
-        function stopListening() {
-            isListening = false;
-            const micBtn = document.getElementById('mic-btn');
-            const input = document.getElementById('editor-input');
-
-            micBtn.style.background = '';
-            micBtn.style.color = '';
-            input.placeholder = 'Ex: Ajoute une section conclusion...';
-
-            if (recognition) {
-                recognition.stop();
-            }
-        }
-
-        // ========== Push-to-Talk Voice Conversation ==========
-        let voiceConversationActive = false;
-        let voiceMediaRecorder = null;
-        let voiceAudioChunks = [];
-        let voiceConversationHistory = [];
-        let currentAudio = null;
-        let isRecording = false;
-        let isSpeaking = false;
-        let audioStream = null;
-
-        function startVoiceConversation() {
-            if (!selectedDocument) {
-                alert('Veuillez d\'abord selectionner un document.');
-                return;
-            }
-
-            // Show modal
-            document.getElementById('voice-modal').style.display = 'block';
-            document.getElementById('voice-doc-name').textContent = 'Document: ' + selectedDocument.name;
-            document.getElementById('voice-history').innerHTML = '';
-            voiceConversationHistory = [];
-            voiceConversationActive = true;
-            isRecording = false;
-            isSpeaking = false;
-
-            // Reset UI to ready state
-            updateVoiceUI('ready');
-        }
-
-        function stopVoiceConversation() {
-            voiceConversationActive = false;
-            isRecording = false;
-            isSpeaking = false;
-
-            // Stop any playing audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-            }
-
-            // Stop recording
-            if (voiceMediaRecorder && voiceMediaRecorder.state !== 'inactive') {
-                voiceMediaRecorder.stop();
-            }
-
-            // Stop audio stream
-            if (audioStream) {
-                audioStream.getTracks().forEach(track => track.stop());
-                audioStream = null;
-            }
-
-            // Hide modal
-            document.getElementById('voice-modal').style.display = 'none';
-
-            // Reset UI
-            document.getElementById('voice-status').textContent = 'Appuyez pour parler';
-            document.getElementById('voice-transcription').textContent = '';
-            document.getElementById('voice-response').style.display = 'none';
-        }
-
-        function toggleVoiceRecording() {
-            // If agent is speaking, stop it and start recording
-            if (isSpeaking && currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-                isSpeaking = false;
-                document.getElementById('voice-response').style.display = 'none';
-                startRecording();
-                return;
-            }
-
-            // Toggle recording
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
-        }
-
-        async function startRecording() {
-            if (!voiceConversationActive) return;
-
-            try {
-                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-                voiceMediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
-                voiceAudioChunks = [];
-                isRecording = true;
-
-                // Update UI - recording
-                updateVoiceUI('recording');
-
-                voiceMediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        voiceAudioChunks.push(event.data);
-                    }
-                };
-
-                voiceMediaRecorder.onstop = async () => {
-                    // Stop all tracks
-                    if (audioStream) {
-                        audioStream.getTracks().forEach(track => track.stop());
-                        audioStream = null;
-                    }
-
-                    if (!voiceConversationActive) return;
-
-                    // Create blob from chunks
-                    const audioBlob = new Blob(voiceAudioChunks, { type: 'audio/webm' });
-
-                    // Only process if there's actual audio content
-                    if (audioBlob.size > 1000) {
-                        await processVoiceInput(audioBlob);
-                    } else {
-                        updateVoiceUI('ready');
-                    }
-                };
-
-                voiceMediaRecorder.start();
-
-            } catch (error) {
-                console.error('Error starting voice recording:', error);
-                alert('Impossible d\'acceder au microphone. Verifiez les permissions.');
-                isRecording = false;
-                updateVoiceUI('ready');
-            }
-        }
-
-        function stopRecording() {
-            if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
-                isRecording = false;
-                voiceMediaRecorder.stop();
-            }
-        }
-
-        function updateVoiceUI(state) {
-            const btn = document.getElementById('push-to-talk-btn');
-            const status = document.getElementById('voice-status');
-
-            switch(state) {
-                case 'ready':
-                    btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                    btn.style.transform = 'scale(1)';
-                    btn.style.boxShadow = 'none';
-                    btn.style.animation = 'none';
-                    status.textContent = 'Appuyez pour parler';
-                    break;
-                case 'recording':
-                    btn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-                    btn.style.transform = 'scale(1.05)';
-                    btn.style.boxShadow = '0 0 0 0 rgba(239, 68, 68, 0.7)';
-                    btn.style.animation = 'pulse-red 1.5s infinite';
-                    status.textContent = 'Enregistrement... Appuyez pour envoyer';
-                    break;
-                case 'processing':
-                    btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-                    btn.style.animation = 'none';
-                    btn.style.transform = 'scale(0.95)';
-                    btn.style.boxShadow = '0 0 30px rgba(245, 158, 11, 0.5)';
-                    status.textContent = 'Traitement en cours...';
-                    break;
-                case 'speaking':
-                    btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                    btn.style.animation = 'none';
-                    btn.style.transform = 'scale(1.05)';
-                    btn.style.boxShadow = '0 0 30px rgba(16, 185, 129, 0.5)';
-                    status.textContent = 'L\'agent parle... Appuyez pour interrompre';
-                    break;
-            }
-        }
-
-        async function processVoiceInput(audioBlob) {
-            if (!voiceConversationActive) return;
-
-            updateVoiceUI('processing');
-            document.getElementById('voice-transcription').textContent = 'Transcription...';
-
-            try {
-                // Prepare form data
-                const formData = new FormData();
-                formData.append('audio', audioBlob, 'recording.webm');
-                formData.append('document', JSON.stringify(selectedDocument));
-                formData.append('history', JSON.stringify(voiceConversationHistory));
-
-                // Send to backend
-                const response = await fetch('/voice-chat', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    console.error('Voice chat error:', data.error);
-                    document.getElementById('voice-transcription').textContent = 'Erreur: ' + data.error;
-                    updateVoiceUI('ready');
-                    return;
-                }
-
-                // Display transcription
-                document.getElementById('voice-transcription').textContent = 'Vous: "' + data.transcription + '"';
-
-                // Add to history
-                voiceConversationHistory.push({ role: 'user', content: data.transcription });
-                voiceConversationHistory.push({ role: 'assistant', content: data.response });
-
-                // Update conversation history display
-                addToVoiceHistory('user', data.transcription);
-                addToVoiceHistory('assistant', data.response);
-
-                // Show modification result if any
-                if (data.modification_result && data.modification_result.status === 'success') {
-                    document.getElementById('voice-response').textContent = '✓ ' + data.modification_result.message;
-                    document.getElementById('voice-response').style.display = 'block';
-                }
-
-                // Play audio response
-                if (data.audio) {
-                    isSpeaking = true;
-                    updateVoiceUI('speaking');
-
-                    currentAudio = new Audio('data:audio/mp3;base64,' + data.audio);
-
-                    currentAudio.onended = () => {
-                        currentAudio = null;
-                        isSpeaking = false;
-                        document.getElementById('voice-response').style.display = 'none';
-                        updateVoiceUI('ready');
-                    };
-
-                    currentAudio.onerror = () => {
-                        console.error('Audio playback error');
-                        currentAudio = null;
-                        isSpeaking = false;
-                        updateVoiceUI('ready');
-                    };
-
-                    currentAudio.play();
-                } else {
-                    updateVoiceUI('ready');
-                }
-
-            } catch (error) {
-                console.error('Error processing voice:', error);
-                document.getElementById('voice-transcription').textContent = 'Erreur de connexion';
-                updateVoiceUI('ready');
-            }
-        }
-
-        function addToVoiceHistory(role, text) {
-            const historyDiv = document.getElementById('voice-history');
-            const msgDiv = document.createElement('div');
-            msgDiv.style.cssText = `
-                padding: 0.5rem 0.75rem;
-                border-radius: 8px;
-                font-size: 0.85rem;
-                max-width: 80%;
-                ${role === 'user'
-                    ? 'background: rgba(102, 126, 234, 0.3); align-self: flex-end; text-align: right;'
-                    : 'background: rgba(255, 255, 255, 0.1); align-self: flex-start;'}
-            `;
-            msgDiv.textContent = text;
-            historyDiv.appendChild(msgDiv);
-            historyDiv.scrollTop = historyDiv.scrollHeight;
-        }
-
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
-                70% { box-shadow: 0 0 0 20px rgba(102, 126, 234, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
-            }
-            @keyframes pulse-red {
-                0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-                70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </body>
 </html>
