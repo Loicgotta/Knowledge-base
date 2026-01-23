@@ -577,6 +577,189 @@
             border-color: var(--accent);
         }
 
+        /* ========== DOCUMENT EDITOR SECTION ========== */
+        .editor-section {
+            border-top: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .editor-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .editor-title svg {
+            color: var(--accent);
+        }
+
+        .select-doc-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .select-doc-btn:hover {
+            background: var(--border);
+        }
+
+        .selected-doc {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-input);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .selected-doc-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .selected-doc-icon.doc { background: rgba(66, 133, 244, 0.2); color: #4285f4; }
+        .selected-doc-icon.sheet { background: rgba(52, 168, 83, 0.2); color: #34a853; }
+        .selected-doc-icon.slides { background: rgba(251, 188, 5, 0.2); color: #fbbc05; }
+
+        .selected-doc-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .selected-doc-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .selected-doc-type {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .selected-doc-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .selected-doc-close:hover {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+
+        .editor-chat {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+
+        .editor-input-area {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .editor-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: inherit;
+        }
+
+        .editor-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .editor-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .editor-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .editor-mic-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .editor-mic-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .editor-mic-btn.recording {
+            background: var(--error);
+            border-color: var(--error);
+            color: white;
+            animation: pulse-mic 1.5s infinite;
+        }
+
+        .editor-send-btn {
+            background: var(--accent);
+            color: white;
+        }
+
+        .editor-send-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .no-doc-selected {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
         /* ========== LOGIN STATE ========== */
         .login-container {
             flex: 1;
@@ -1122,6 +1305,67 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- DOCUMENT EDITOR SECTION -->
+                <div class="editor-section">
+                    <div class="editor-header">
+                        <div class="editor-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Éditer un document
+                        </div>
+                        <button class="select-doc-btn" onclick="openDocSelector()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            Sélectionner
+                        </button>
+                    </div>
+
+                    <div id="editor-content">
+                        <div class="no-doc-selected" id="no-doc-message">
+                            Sélectionnez un document Google (Doc, Sheet, Slides) pour le modifier avec l'IA
+                        </div>
+
+                        <div id="doc-editor-area" style="display: none;">
+                            <div class="selected-doc" id="selected-doc-info">
+                                <div class="selected-doc-icon doc" id="selected-doc-icon">📄</div>
+                                <div class="selected-doc-info">
+                                    <div class="selected-doc-name" id="selected-doc-name">Document</div>
+                                    <div class="selected-doc-type" id="selected-doc-type">Google Docs</div>
+                                </div>
+                                <button class="selected-doc-close" onclick="clearSelectedDoc()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="editor-chat" id="editor-messages"></div>
+
+                            <div class="editor-input-area">
+                                <input type="text" class="editor-input" id="editor-input" placeholder="Ex: Ajoute une ligne avec les ventes de lundi..." onkeypress="handleEditorKeyPress(event)">
+                                <button class="editor-btn editor-mic-btn" id="editor-mic-btn" onclick="toggleEditorMicrophone()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                        <line x1="12" y1="19" x2="12" y2="23"/>
+                                        <line x1="8" y1="23" x2="16" y2="23"/>
+                                    </svg>
+                                </button>
+                                <button class="editor-btn editor-send-btn" onclick="sendEditorMessage()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="22" y1="2" x2="11" y2="13"/>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -1164,6 +1408,32 @@
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="closeFileBrowser()">Annuler</button>
                     <button class="btn btn-primary" onclick="addSelectedDocuments()" id="add-btn" disabled>Ajouter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOC SELECTOR MODAL -->
+    <div class="modal-overlay" id="doc-selector-modal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Sélectionner un document à éditer</h3>
+                <button class="modal-close" onclick="closeDocSelector()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="doc-selector-loading" style="text-align: center; padding: 2rem;">
+                    <div class="spinner"></div>
+                    <p style="color: var(--text-secondary);">Chargement des documents...</p>
+                </div>
+                <div id="doc-selector-content" style="display: none;">
+                    <div class="file-list" id="editable-docs-list" style="max-height: 300px;"></div>
+                </div>
+                <div id="doc-selector-empty" style="display: none; text-align: center; padding: 2rem; color: var(--text-muted);">
+                    Aucun document éditable trouvé (Google Docs, Sheets ou Slides)
                 </div>
             </div>
         </div>
@@ -1578,6 +1848,296 @@
                 else alert('Erreur: ' + data.error);
             } catch (error) {
                 alert('Erreur de connexion');
+            }
+        }
+
+        // ========== DOCUMENT EDITOR FUNCTIONS ==========
+
+        let selectedDocument = null;
+        let editorHistory = [];
+        let editorMediaRecorder = null;
+        let editorAudioChunks = [];
+        let isEditorRecording = false;
+
+        async function openDocSelector() {
+            const modal = document.getElementById('doc-selector-modal');
+            const loading = document.getElementById('doc-selector-loading');
+            const content = document.getElementById('doc-selector-content');
+            const empty = document.getElementById('doc-selector-empty');
+
+            modal.classList.add('active');
+            loading.style.display = 'block';
+            content.style.display = 'none';
+            empty.style.display = 'none';
+
+            try {
+                const response = await fetch('/list-editable-documents');
+                const data = await response.json();
+
+                loading.style.display = 'none';
+
+                if (data.documents && data.documents.length > 0) {
+                    renderEditableDocs(data.documents);
+                    content.style.display = 'block';
+                } else {
+                    empty.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading documents:', error);
+                loading.innerHTML = '<p style="color: var(--error);">Erreur de chargement</p>';
+            }
+        }
+
+        function closeDocSelector() {
+            document.getElementById('doc-selector-modal').classList.remove('active');
+        }
+
+        function renderEditableDocs(docs) {
+            const list = document.getElementById('editable-docs-list');
+
+            list.innerHTML = docs.map(doc => {
+                let icon, iconClass, typeName;
+
+                if (doc.mimeType.includes('document')) {
+                    icon = '📄';
+                    iconClass = 'doc';
+                    typeName = 'Google Docs';
+                } else if (doc.mimeType.includes('spreadsheet')) {
+                    icon = '📊';
+                    iconClass = 'sheet';
+                    typeName = 'Google Sheets';
+                } else if (doc.mimeType.includes('presentation')) {
+                    icon = '📽️';
+                    iconClass = 'slides';
+                    typeName = 'Google Slides';
+                }
+
+                return `
+                    <div class="file-item" onclick="selectDocForEdit('${doc.id}', '${doc.name.replace(/'/g, "\\'")}', '${doc.mimeType}')">
+                        <div class="selected-doc-icon ${iconClass}" style="width:28px;height:28px;font-size:1rem;">${icon}</div>
+                        <span class="file-name">${doc.name}</span>
+                        <span class="file-type">${typeName}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectDocForEdit(id, name, mimeType) {
+            selectedDocument = { id, name, mimeType };
+            editorHistory = [];
+
+            // Update UI
+            document.getElementById('no-doc-message').style.display = 'none';
+            document.getElementById('doc-editor-area').style.display = 'block';
+            document.getElementById('selected-doc-name').textContent = name;
+
+            let icon, iconClass, typeName;
+            if (mimeType.includes('document')) {
+                icon = '📄';
+                iconClass = 'doc';
+                typeName = 'Google Docs';
+            } else if (mimeType.includes('spreadsheet')) {
+                icon = '📊';
+                iconClass = 'sheet';
+                typeName = 'Google Sheets';
+            } else if (mimeType.includes('presentation')) {
+                icon = '📽️';
+                iconClass = 'slides';
+                typeName = 'Google Slides';
+            }
+
+            const iconEl = document.getElementById('selected-doc-icon');
+            iconEl.textContent = icon;
+            iconEl.className = `selected-doc-icon ${iconClass}`;
+            document.getElementById('selected-doc-type').textContent = typeName;
+
+            // Clear editor messages
+            document.getElementById('editor-messages').innerHTML = '';
+
+            closeDocSelector();
+        }
+
+        function clearSelectedDoc() {
+            selectedDocument = null;
+            editorHistory = [];
+            document.getElementById('no-doc-message').style.display = 'block';
+            document.getElementById('doc-editor-area').style.display = 'none';
+            document.getElementById('editor-messages').innerHTML = '';
+        }
+
+        function handleEditorKeyPress(event) {
+            if (event.key === 'Enter') sendEditorMessage();
+        }
+
+        async function sendEditorMessage() {
+            if (!selectedDocument) {
+                alert('Veuillez d\'abord sélectionner un document.');
+                return;
+            }
+
+            const input = document.getElementById('editor-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addEditorMessage(message, 'user');
+            input.value = '';
+
+            const typingId = showEditorTyping();
+
+            try {
+                const response = await fetch('/chat-edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        document: selectedDocument,
+                        history: editorHistory
+                    })
+                });
+
+                const data = await response.json();
+                removeEditorTyping(typingId);
+
+                if (data.error) {
+                    addEditorMessage(data.error, 'error');
+                } else {
+                    addEditorMessage(data.answer, 'assistant');
+                    editorHistory.push({ role: 'user', content: message });
+                    editorHistory.push({ role: 'assistant', content: data.answer });
+                }
+            } catch (error) {
+                removeEditorTyping(typingId);
+                addEditorMessage('Erreur de connexion.', 'error');
+            }
+        }
+
+        function addEditorMessage(content, type) {
+            const messages = document.getElementById('editor-messages');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.style.maxWidth = '90%';
+            div.style.fontSize = '0.85rem';
+
+            const senderLabel = type === 'user' ? 'Vous' : 'Friday';
+            div.innerHTML = `
+                <div class="message-sender" style="font-size:0.7rem;">${senderLabel}</div>
+                <div class="message-content" style="padding:0.625rem 0.875rem;">${escapeHtml(content)}</div>
+            `;
+
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function showEditorTyping() {
+            const messages = document.getElementById('editor-messages');
+            const div = document.createElement('div');
+            div.className = 'typing-indicator';
+            div.id = 'editor-typing-' + Date.now();
+            div.style.padding = '0.625rem';
+            div.innerHTML = '<span></span><span></span><span></span>';
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+            return div.id;
+        }
+
+        function removeEditorTyping(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        // Voice for editor
+        function toggleEditorMicrophone() {
+            if (isEditorRecording) {
+                stopEditorRecording();
+            } else {
+                startEditorRecording();
+            }
+        }
+
+        async function startEditorRecording() {
+            if (!selectedDocument) {
+                alert('Veuillez d\'abord sélectionner un document.');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                editorMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                editorAudioChunks = [];
+                isEditorRecording = true;
+
+                const micBtn = document.getElementById('editor-mic-btn');
+                micBtn.classList.add('recording');
+
+                editorMediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) editorAudioChunks.push(e.data);
+                };
+
+                editorMediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    micBtn.classList.remove('recording');
+
+                    const audioBlob = new Blob(editorAudioChunks, { type: 'audio/webm' });
+
+                    if (audioBlob.size > 1000) {
+                        await processEditorVoice(audioBlob);
+                    }
+                };
+
+                editorMediaRecorder.start();
+            } catch (error) {
+                console.error('Microphone error:', error);
+                alert('Impossible d\'accéder au microphone.');
+            }
+        }
+
+        function stopEditorRecording() {
+            if (editorMediaRecorder && editorMediaRecorder.state === 'recording') {
+                isEditorRecording = false;
+                editorMediaRecorder.stop();
+            }
+        }
+
+        async function processEditorVoice(audioBlob) {
+            const typingId = showEditorTyping();
+
+            try {
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.webm');
+                formData.append('document', JSON.stringify(selectedDocument));
+                formData.append('history', JSON.stringify(editorHistory));
+
+                const response = await fetch('/voice-chat', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                removeEditorTyping(typingId);
+
+                if (data.error) {
+                    addEditorMessage(data.error, 'error');
+                    return;
+                }
+
+                // Show transcription
+                addEditorMessage(data.transcription, 'user');
+
+                // Show response
+                addEditorMessage(data.response, 'assistant');
+
+                editorHistory.push({ role: 'user', content: data.transcription });
+                editorHistory.push({ role: 'assistant', content: data.response });
+
+                // Play audio response
+                if (data.audio) {
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    audio.play();
+                }
+
+            } catch (error) {
+                removeEditorTyping(typingId);
+                addEditorMessage('Erreur de connexion.', 'error');
             }
         }
     </script>
