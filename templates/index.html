@@ -95,14 +95,11 @@
         }
 
         .assistant-avatar {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
+            object-fit: cover;
+            background: var(--bg-input);
         }
 
         .assistant-name {
@@ -960,7 +957,7 @@
         <div class="assistant-section">
             <div class="assistant-label">Votre assistant IA</div>
             <div class="assistant-selector">
-                <div class="assistant-avatar">🤖</div>
+                <img class="assistant-avatar" src="/static/avatar.png" alt="Friday">
                 <span class="assistant-name">Friday</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"/>
