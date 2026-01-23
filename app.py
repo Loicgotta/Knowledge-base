@@ -1571,6 +1571,53 @@ def text_to_speech():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/transcribe', methods=['POST'])
+def transcribe_audio():
+    """
+    Endpoint pour transcrire l'audio immédiatement
+    Retourne juste la transcription pour affichage instantané
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    audio_file = request.files['audio']
+
+    try:
+        import tempfile
+        from openai import OpenAI
+
+        client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+        # Sauvegarder le fichier audio temporairement
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_audio_path = temp_audio.name
+
+        # Transcrire avec Whisper
+        with open(temp_audio_path, 'rb') as audio:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio,
+                language="fr"
+            )
+
+        # Nettoyer le fichier temporaire
+        os.unlink(temp_audio_path)
+
+        return jsonify({
+            'status': 'success',
+            'transcription': transcription.text
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[transcribe] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/voice-chat', methods=['POST'])
 def voice_chat():
     """
@@ -1620,12 +1667,35 @@ def voice_chat():
         # Nettoyer le fichier temporaire
         os.unlink(temp_audio_path)
 
-        # Si pas de document sélectionné, conversation simple
+        # Variables pour le résultat
+        ai_answer = None
+        modification_result = None
+        created_document = None
+
+        # Si pas de document sélectionné, mode CRÉATION
         if not document or not document.get('id'):
-            # Conversation simple sans document
-            messages = [
-                {"role": "system", "content": "Tu es un assistant vocal. Réponds de manière concise car tes réponses seront lues à voix haute."}
-            ]
+            # Mode création de documents
+            credentials = get_valid_credentials()
+            if not credentials:
+                return jsonify({'error': 'Invalid credentials'}), 401
+
+            drive_service = DriveService(credentials)
+
+            creation_prompt = """Tu es Friday, un assistant vocal qui peut créer des documents Google.
+
+Tu peux créer:
+- Google Docs: [CREATE_DOC:{"title":"Titre", "content":"Contenu optionnel"}]
+- Google Sheets: [CREATE_SHEET:{"title":"Titre", "headers":["Col1", "Col2"]}]
+- Google Slides: [CREATE_SLIDES:{"title":"Titre"}]
+
+REGLES:
+1. Si l'utilisateur veut créer un document, INCLUS la commande CREATE
+2. Propose un titre pertinent si non spécifié
+3. Pour les tableaux, suggère des colonnes appropriées
+4. Réponses courtes pour lecture vocale
+5. Si pas de demande de création, réponds normalement"""
+
+            messages = [{"role": "system", "content": creation_prompt}]
             for msg in history[-10:]:
                 messages.append(msg)
             messages.append({"role": "user", "content": user_message})
@@ -1637,7 +1707,36 @@ def voice_chat():
                 max_tokens=500
             )
             ai_answer = response.choices[0].message.content
-            modification_result = None
+
+            # Gérer les commandes de création
+            if '[CREATE_DOC:' in ai_answer:
+                result = execute_create_doc(ai_answer, drive_service)
+                if result.get('status') == 'success':
+                    created_document = {
+                        'id': result['file_id'],
+                        'name': result['title'],
+                        'mimeType': 'application/vnd.google-apps.document'
+                    }
+                ai_answer = remove_command_from_answer(ai_answer, '[CREATE_DOC:')
+            elif '[CREATE_SHEET:' in ai_answer:
+                result = execute_create_sheet(ai_answer, drive_service)
+                if result.get('status') == 'success':
+                    created_document = {
+                        'id': result['file_id'],
+                        'name': result['title'],
+                        'mimeType': 'application/vnd.google-apps.spreadsheet'
+                    }
+                ai_answer = remove_command_from_answer(ai_answer, '[CREATE_SHEET:')
+            elif '[CREATE_SLIDES:' in ai_answer:
+                result = execute_create_slides(ai_answer, drive_service)
+                if result.get('status') == 'success':
+                    created_document = {
+                        'id': result['file_id'],
+                        'name': result['title'],
+                        'mimeType': 'application/vnd.google-apps.presentation'
+                    }
+                ai_answer = remove_command_from_answer(ai_answer, '[CREATE_SLIDES:')
+
         else:
             # 2. TRAITEMENT IA avec contexte document
             credentials = get_valid_credentials()
@@ -1794,7 +1893,8 @@ Si tu ne comprends pas exactement ce que l'utilisateur veut:
             'transcription': user_message,
             'response': ai_answer,
             'audio': audio_base64,
-            'modification_result': modification_result
+            'modification_result': modification_result,
+            'created_document': created_document
         })
 
     except Exception as e:

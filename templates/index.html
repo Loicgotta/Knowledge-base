@@ -2118,44 +2118,68 @@
         }
 
         async function processEditorVoice(audioBlob) {
-            const typingId = showEditorTyping();
+            // Remove welcome message if present
+            const welcome = document.getElementById('editor-welcome');
+            if (welcome) welcome.remove();
+
+            // Step 1: Transcribe immediately
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
 
             try {
-                const formData = new FormData();
-                formData.append('audio', audioBlob, 'recording.webm');
-                formData.append('document', JSON.stringify(selectedDocument));
-                formData.append('history', JSON.stringify(editorHistory));
-
-                const response = await fetch('/voice-chat', {
+                const transcribeResponse = await fetch('/transcribe', {
                     method: 'POST',
                     body: formData
                 });
 
-                const data = await response.json();
-                removeEditorTyping(typingId);
+                const transcribeData = await transcribeResponse.json();
 
-                if (data.error) {
-                    addEditorMessage(data.error, 'error');
+                if (transcribeData.error) {
+                    addEditorMessage(transcribeData.error, 'error');
                     return;
                 }
 
-                // Show transcription
-                addEditorMessage(data.transcription, 'user');
+                // Show transcription IMMEDIATELY
+                const userMessage = transcribeData.transcription;
+                addEditorMessage(userMessage, 'user');
 
-                // Show response
-                addEditorMessage(data.response, 'assistant');
+                // Step 2: Now send to chat-edit for processing
+                const typingId = showEditorTyping();
 
-                editorHistory.push({ role: 'user', content: data.transcription });
-                editorHistory.push({ role: 'assistant', content: data.response });
+                const chatResponse = await fetch('/chat-edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        document: selectedDocument,
+                        history: editorHistory
+                    })
+                });
 
-                // Play audio response
-                if (data.audio) {
-                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
-                    audio.play();
+                const chatData = await chatResponse.json();
+                removeEditorTyping(typingId);
+
+                if (chatData.error) {
+                    addEditorMessage(chatData.error, 'error');
+                    return;
+                }
+
+                const responseText = chatData.response || chatData.answer;
+                addEditorMessage(responseText, 'assistant');
+
+                editorHistory.push({ role: 'user', content: userMessage });
+                editorHistory.push({ role: 'assistant', content: responseText });
+
+                // If a document was created, select it
+                if (chatData.created_document) {
+                    selectDocForEdit(
+                        chatData.created_document.id,
+                        chatData.created_document.name,
+                        chatData.created_document.mimeType
+                    );
                 }
 
             } catch (error) {
-                removeEditorTyping(typingId);
                 addEditorMessage('Erreur de connexion.', 'error');
             }
         }
