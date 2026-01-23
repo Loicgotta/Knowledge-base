@@ -638,21 +638,6 @@
         }
 
         /* ========== DOCUMENT EDITOR SECTION ========== */
-        .editor-welcome {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        #doc-editor-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
         .selected-doc {
             display: flex;
             align-items: center;
@@ -1291,57 +1276,58 @@
 
                     <!-- EDIT MODE PANEL -->
                     <div class="mode-panel" id="panel-edit">
-                        <div class="editor-welcome" id="editor-welcome">
-                            <div class="welcome-state">
+                        <!-- Selected document header (shown when document selected) -->
+                        <div class="selected-doc" id="selected-doc-info" style="display: none;">
+                            <div class="selected-doc-icon doc" id="selected-doc-icon">📄</div>
+                            <div class="selected-doc-info">
+                                <div class="selected-doc-name" id="selected-doc-name">Document</div>
+                                <div class="selected-doc-type" id="selected-doc-type">Google Docs</div>
+                            </div>
+                            <button class="selected-doc-close" onclick="clearSelectedDoc()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Editor messages area -->
+                        <div class="messages" id="editor-messages">
+                            <div class="welcome-state" id="editor-welcome">
                                 <div class="welcome-icon">
                                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                     </svg>
                                 </div>
-                                <h3 class="welcome-title">Éditer un document</h3>
-                                <p class="welcome-text">Sélectionnez un document Google (Doc, Sheet, Slides) pour le modifier avec l'IA</p>
-                                <button class="btn btn-primary" onclick="openDocSelector()">
-                                    Sélectionner un document
-                                </button>
+                                <h3 class="welcome-title">Créer ou éditer un document</h3>
+                                <p class="welcome-text">Demandez-moi de créer un nouveau document, ou sélectionnez-en un existant à modifier</p>
+                                <div class="suggestions">
+                                    <span class="suggestion" onclick="askEditorQuestion('Crée un nouveau document')">Créer un document</span>
+                                    <span class="suggestion" onclick="askEditorQuestion('Crée un nouveau tableau')">Créer un tableau</span>
+                                    <span class="suggestion" onclick="openDocSelector()">Sélectionner un fichier</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div id="doc-editor-area" style="display: none;">
-                            <div class="selected-doc" id="selected-doc-info">
-                                <div class="selected-doc-icon doc" id="selected-doc-icon">📄</div>
-                                <div class="selected-doc-info">
-                                    <div class="selected-doc-name" id="selected-doc-name">Document</div>
-                                    <div class="selected-doc-type" id="selected-doc-type">Google Docs</div>
-                                </div>
-                                <button class="selected-doc-close" onclick="clearSelectedDoc()">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                                    </svg>
-                                </button>
+                        <!-- Input area (always visible) -->
+                        <div class="input-area">
+                            <div class="input-wrapper">
+                                <input type="text" class="chat-input" id="editor-input" placeholder="Créer un doc, un tableau... ou modifier le document sélectionné" onkeypress="handleEditorKeyPress(event)">
                             </div>
-
-                            <div class="editor-chat" id="editor-messages"></div>
-
-                            <div class="input-area">
-                                <div class="input-wrapper">
-                                    <input type="text" class="chat-input" id="editor-input" placeholder="Ex: Ajoute une ligne avec les ventes de lundi..." onkeypress="handleEditorKeyPress(event)">
-                                </div>
-                                <button class="mic-btn" id="editor-mic-btn" onclick="toggleEditorMicrophone()" title="Enregistrer un message vocal">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                        <line x1="12" y1="19" x2="12" y2="23"/>
-                                        <line x1="8" y1="23" x2="16" y2="23"/>
-                                    </svg>
-                                </button>
-                                <button class="send-btn" onclick="sendEditorMessage()">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="22" y1="2" x2="11" y2="13"/>
-                                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                                    </svg>
-                                </button>
-                            </div>
+                            <button class="mic-btn" id="editor-mic-btn" onclick="toggleEditorMicrophone()" title="Enregistrer un message vocal">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                </svg>
+                            </button>
+                            <button class="send-btn" onclick="sendEditorMessage()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"/>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1918,11 +1904,9 @@
 
         function selectDocForEdit(id, name, mimeType) {
             selectedDocument = { id, name, mimeType };
-            editorHistory = [];
 
-            // Update UI
-            document.getElementById('editor-welcome').style.display = 'none';
-            document.getElementById('doc-editor-area').style.display = 'flex';
+            // Show selected document header
+            document.getElementById('selected-doc-info').style.display = 'flex';
             document.getElementById('selected-doc-name').textContent = name;
 
             let icon, iconClass, typeName;
@@ -1945,8 +1929,12 @@
             iconEl.className = `selected-doc-icon ${iconClass}`;
             document.getElementById('selected-doc-type').textContent = typeName;
 
-            // Clear editor messages
-            document.getElementById('editor-messages').innerHTML = '';
+            // Remove welcome if still present
+            const welcome = document.getElementById('editor-welcome');
+            if (welcome) welcome.remove();
+
+            // Update input placeholder
+            document.getElementById('editor-input').placeholder = 'Ex: Ajoute une ligne avec les ventes de lundi...';
 
             closeDocSelector();
         }
@@ -1954,24 +1942,51 @@
         function clearSelectedDoc() {
             selectedDocument = null;
             editorHistory = [];
-            document.getElementById('editor-welcome').style.display = 'flex';
-            document.getElementById('doc-editor-area').style.display = 'none';
-            document.getElementById('editor-messages').innerHTML = '';
+
+            // Hide selected document header
+            document.getElementById('selected-doc-info').style.display = 'none';
+
+            // Restore welcome message
+            const messagesDiv = document.getElementById('editor-messages');
+            messagesDiv.innerHTML = `
+                <div class="welcome-state" id="editor-welcome">
+                    <div class="welcome-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </div>
+                    <h3 class="welcome-title">Créer ou éditer un document</h3>
+                    <p class="welcome-text">Demandez-moi de créer un nouveau document, ou sélectionnez-en un existant à modifier</p>
+                    <div class="suggestions">
+                        <span class="suggestion" onclick="askEditorQuestion('Crée un nouveau document')">Créer un document</span>
+                        <span class="suggestion" onclick="askEditorQuestion('Crée un nouveau tableau')">Créer un tableau</span>
+                        <span class="suggestion" onclick="openDocSelector()">Sélectionner un fichier</span>
+                    </div>
+                </div>
+            `;
+
+            // Reset input placeholder
+            document.getElementById('editor-input').placeholder = 'Créer un doc, un tableau... ou modifier le document sélectionné';
         }
 
         function handleEditorKeyPress(event) {
             if (event.key === 'Enter') sendEditorMessage();
         }
 
-        async function sendEditorMessage() {
-            if (!selectedDocument) {
-                alert('Veuillez d\'abord sélectionner un document.');
-                return;
-            }
+        function askEditorQuestion(text) {
+            document.getElementById('editor-input').value = text;
+            sendEditorMessage();
+        }
 
+        async function sendEditorMessage() {
             const input = document.getElementById('editor-input');
             const message = input.value.trim();
             if (!message) return;
+
+            // Remove welcome message if present
+            const welcome = document.getElementById('editor-welcome');
+            if (welcome) welcome.remove();
 
             addEditorMessage(message, 'user');
             input.value = '';
@@ -1984,7 +1999,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message,
-                        document: selectedDocument,
+                        document: selectedDocument,  // Can be null for creation mode
                         history: editorHistory
                     })
                 });
@@ -1995,9 +2010,19 @@
                 if (data.error) {
                     addEditorMessage(data.error, 'error');
                 } else {
-                    addEditorMessage(data.answer, 'assistant');
+                    const responseText = data.response || data.answer;
+                    addEditorMessage(responseText, 'assistant');
                     editorHistory.push({ role: 'user', content: message });
-                    editorHistory.push({ role: 'assistant', content: data.answer });
+                    editorHistory.push({ role: 'assistant', content: responseText });
+
+                    // If a document was created, select it automatically
+                    if (data.created_document) {
+                        selectDocForEdit(
+                            data.created_document.id,
+                            data.created_document.name,
+                            data.created_document.mimeType
+                        );
+                    }
                 }
             } catch (error) {
                 removeEditorTyping(typingId);

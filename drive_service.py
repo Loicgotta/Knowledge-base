@@ -937,6 +937,86 @@ class DriveService:
                 'message': str(e)
             }
 
+    def create_google_sheet(self, title: str, headers: list = None) -> Dict:
+        """
+        Create a new Google Sheet
+
+        Args:
+            title: The title of the new spreadsheet
+            headers: Optional list of column headers for the first row
+
+        Returns:
+            Result dictionary with file_id and status
+        """
+        try:
+            # Create empty spreadsheet
+            spreadsheet = {
+                'properties': {'title': title}
+            }
+            result = self.sheets_service.spreadsheets().create(body=spreadsheet).execute()
+            file_id = result.get('spreadsheetId')
+
+            # Add headers if provided
+            if headers and len(headers) > 0:
+                self.sheets_service.spreadsheets().values().update(
+                    spreadsheetId=file_id,
+                    range='A1',
+                    valueInputOption='RAW',
+                    body={'values': [headers]}
+                ).execute()
+
+            print(f"[create_google_sheet] Created spreadsheet: {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Spreadsheet "{title}" created successfully',
+                'file_id': file_id,
+                'title': title,
+                'mimeType': 'application/vnd.google-apps.spreadsheet'
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[create_google_sheet] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e)
+            }
+
+    def create_google_slides(self, title: str) -> Dict:
+        """
+        Create a new Google Slides presentation
+
+        Args:
+            title: The title of the new presentation
+
+        Returns:
+            Result dictionary with file_id and status
+        """
+        try:
+            # Create empty presentation
+            presentation = {
+                'title': title
+            }
+            result = self.slides_service.presentations().create(body=presentation).execute()
+            file_id = result.get('presentationId')
+
+            print(f"[create_google_slides] Created presentation: {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Presentation "{title}" created successfully',
+                'file_id': file_id,
+                'title': title,
+                'mimeType': 'application/vnd.google-apps.presentation'
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[create_google_slides] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e)
+            }
+
     def get_file_metadata(self, file_id: str) -> Dict:
         """
         Get metadata for a file

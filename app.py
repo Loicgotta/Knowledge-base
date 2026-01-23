@@ -766,18 +766,179 @@ def execute_delete_text(answer: str, credentials) -> dict:
         return {'status': 'error', 'message': str(e)}
 
 
+def handle_creation_mode(message, history, drive_service):
+    """Handle document creation requests when no document is selected"""
+    from openai import OpenAI
+    openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+    system_prompt = """Tu es Friday, un assistant IA amical et professionnel qui aide a creer des documents Google.
+
+Tu peux creer 3 types de documents:
+1. **Google Docs** - pour les documents texte
+2. **Google Sheets** - pour les tableaux et donnees
+3. **Google Slides** - pour les presentations
+
+=== COMMANDES DISPONIBLES ===
+
+POUR CREER UN DOCUMENT TEXTE:
+[CREATE_DOC:{"title":"Titre du document", "content":"Contenu initial optionnel"}]
+
+POUR CREER UN TABLEAU:
+[CREATE_SHEET:{"title":"Titre du tableau", "headers":["Colonne1", "Colonne2", "Colonne3"]}]
+Note: les headers sont optionnels mais recommandes pour structurer le tableau
+
+POUR CREER UNE PRESENTATION:
+[CREATE_SLIDES:{"title":"Titre de la presentation"}]
+
+=== EXEMPLES ===
+
+User: "Cree un document pour mes notes de reunion"
+Assistant: [CREATE_DOC:{"title":"Notes de reunion", "content":""}] Parfait! J'ai cree ton document "Notes de reunion". Tu veux que j'y ajoute quelque chose?
+
+User: "Fais moi un tableau de suivi des ventes"
+Assistant: [CREATE_SHEET:{"title":"Suivi des ventes", "headers":["Date", "Produit", "Quantite", "Montant"]}] C'est fait! J'ai cree le tableau "Suivi des ventes" avec les colonnes Date, Produit, Quantite et Montant. Tu veux modifier les colonnes?
+
+User: "Je veux une presentation pour mon projet"
+Assistant: [CREATE_SLIDES:{"title":"Presentation Projet"}] Voila! Ta presentation "Presentation Projet" est prete. Tu veux que je l'ouvre pour y ajouter des slides?
+
+=== REGLES ===
+
+1. TOUJOURS inclure la commande CREATE dans ta reponse quand l'utilisateur demande de creer un fichier
+2. Choisis le bon type de fichier selon le besoin:
+   - Notes, rapports, lettres → CREATE_DOC
+   - Donnees, suivis, listes, calculs → CREATE_SHEET
+   - Presentations, slides → CREATE_SLIDES
+3. Propose un titre pertinent si l'utilisateur n'en donne pas
+4. Pour les Sheets, suggere des colonnes appropriees au contexte
+5. Sois conversationnel et propose de l'aide pour la suite
+
+Si l'utilisateur ne veut pas creer de document, reponds normalement et propose de l'aider."""
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in history[-6:]:
+        messages.append(msg)
+    messages.append({"role": "user", "content": message})
+
+    response = openai_client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=messages,
+        temperature=0.7,
+        max_tokens=1500
+    )
+
+    answer = response.choices[0].message.content
+    created_document = None
+
+    # Handle CREATE_DOC command
+    if '[CREATE_DOC:' in answer:
+        result = execute_create_doc(answer, drive_service)
+        if result.get('status') == 'success':
+            created_document = {
+                'id': result['file_id'],
+                'name': result['title'],
+                'mimeType': 'application/vnd.google-apps.document'
+            }
+        answer = remove_command_from_answer(answer, '[CREATE_DOC:')
+
+    # Handle CREATE_SHEET command
+    elif '[CREATE_SHEET:' in answer:
+        result = execute_create_sheet(answer, drive_service)
+        if result.get('status') == 'success':
+            created_document = {
+                'id': result['file_id'],
+                'name': result['title'],
+                'mimeType': 'application/vnd.google-apps.spreadsheet'
+            }
+        answer = remove_command_from_answer(answer, '[CREATE_SHEET:')
+
+    # Handle CREATE_SLIDES command
+    elif '[CREATE_SLIDES:' in answer:
+        result = execute_create_slides(answer, drive_service)
+        if result.get('status') == 'success':
+            created_document = {
+                'id': result['file_id'],
+                'name': result['title'],
+                'mimeType': 'application/vnd.google-apps.presentation'
+            }
+        answer = remove_command_from_answer(answer, '[CREATE_SLIDES:')
+
+    return jsonify({
+        'response': answer,
+        'created_document': created_document
+    })
+
+
+def execute_create_doc(answer, drive_service):
+    """Execute CREATE_DOC command"""
+    try:
+        import re
+        match = re.search(r'\[CREATE_DOC:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            return {'status': 'error', 'message': 'Invalid CREATE_DOC format'}
+
+        params = json.loads(match.group(1))
+        title = params.get('title', 'Nouveau document')
+        content = params.get('content', '')
+
+        return drive_service.create_google_doc(title, content)
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_create_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
+def execute_create_sheet(answer, drive_service):
+    """Execute CREATE_SHEET command"""
+    try:
+        import re
+        match = re.search(r'\[CREATE_SHEET:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            return {'status': 'error', 'message': 'Invalid CREATE_SHEET format'}
+
+        params = json.loads(match.group(1))
+        title = params.get('title', 'Nouveau tableau')
+        headers = params.get('headers', [])
+
+        return drive_service.create_google_sheet(title, headers)
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_create_sheet] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
+def execute_create_slides(answer, drive_service):
+    """Execute CREATE_SLIDES command"""
+    try:
+        import re
+        match = re.search(r'\[CREATE_SLIDES:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            return {'status': 'error', 'message': 'Invalid CREATE_SLIDES format'}
+
+        params = json.loads(match.group(1))
+        title = params.get('title', 'Nouvelle presentation')
+
+        return drive_service.create_google_slides(title)
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_create_slides] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
 @app.route('/chat-edit', methods=['POST'])
 def chat_edit():
-    """Chat endpoint for editing a specific pre-selected document"""
+    """Chat endpoint for editing or creating documents"""
     if not is_authenticated():
         return jsonify({'error': 'Not authenticated'}), 401
 
     data = request.json
-    if not data or 'message' not in data or 'document' not in data:
-        return jsonify({'error': 'Missing message or document'}), 400
+    if not data or 'message' not in data:
+        return jsonify({'error': 'Missing message'}), 400
 
     message = data['message']
-    document = data['document']  # {id, name, mimeType}
+    document = data.get('document')  # {id, name, mimeType} or None for creation mode
     history = data.get('history', [])
 
     try:
@@ -786,6 +947,11 @@ def chat_edit():
             return jsonify({'error': 'Invalid credentials'}), 401
 
         drive_service = DriveService(credentials)
+
+        # CREATION MODE - no document selected
+        if not document:
+            return handle_creation_mode(message, history, drive_service)
+
         mime_type = document.get('mimeType', '')
 
         # Determine document type and build appropriate prompt
