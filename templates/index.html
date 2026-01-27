@@ -507,6 +507,10 @@
             font-size: 0.9rem;
             font-family: inherit;
             resize: none;
+            min-height: 44px;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.4;
         }
 
         .chat-input:focus {
@@ -1255,7 +1259,7 @@
 
                         <div class="input-area">
                             <div class="input-wrapper">
-                                <input type="text" class="chat-input" id="user-input" placeholder="Posez votre question..." onkeypress="handleKeyPress(event)">
+                                <textarea class="chat-input" id="user-input" placeholder="Posez votre question..." onkeydown="handleKeyDown(event)" oninput="autoResize(this)" rows="1"></textarea>
                             </div>
                             <button class="mic-btn" id="mic-btn" onclick="toggleMicrophone()" title="Enregistrer un message vocal">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1312,7 +1316,7 @@
                         <!-- Input area (always visible) -->
                         <div class="input-area">
                             <div class="input-wrapper">
-                                <input type="text" class="chat-input" id="editor-input" placeholder="Créer un doc, un tableau... ou modifier le document sélectionné" onkeypress="handleEditorKeyPress(event)">
+                                <textarea class="chat-input" id="editor-input" placeholder="Créer un doc, un tableau... ou modifier le document sélectionné" onkeydown="handleEditorKeyDown(event)" oninput="autoResize(this)" rows="1"></textarea>
                             </div>
                             <button class="mic-btn" id="editor-mic-btn" onclick="toggleEditorMicrophone()" title="Enregistrer un message vocal">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1445,8 +1449,16 @@
             sendMessage();
         }
 
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') sendMessage();
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
         }
 
         async function sendMessage() {
@@ -1459,6 +1471,7 @@
 
             addMessage(message, 'user');
             input.value = '';
+            input.style.height = 'auto';
 
             const typingId = showTyping();
 
@@ -1970,8 +1983,11 @@
             document.getElementById('editor-input').placeholder = 'Créer un doc, un tableau... ou modifier le document sélectionné';
         }
 
-        function handleEditorKeyPress(event) {
-            if (event.key === 'Enter') sendEditorMessage();
+        function handleEditorKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendEditorMessage();
+            }
         }
 
         function askEditorQuestion(text) {
@@ -1990,6 +2006,7 @@
 
             addEditorMessage(message, 'user');
             input.value = '';
+            input.style.height = 'auto';
 
             const typingId = showEditorTyping();
 
