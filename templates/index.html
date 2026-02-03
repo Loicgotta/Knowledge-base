@@ -577,6 +577,31 @@
             color: white;
         }
 
+        .tts-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .tts-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .tts-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
         @keyframes pulse-mic {
             0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
@@ -1134,6 +1159,13 @@
             <h1 class="main-title">Discutez avec l'équipe de Friday</h1>
             <div class="header-right">
                 {% if authenticated %}
+                <button class="tts-btn active" id="tts-toggle" onclick="toggleTTS()" title="Désactiver la voix">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    </svg>
+                </button>
                 <span class="status-badge {% if stats and stats.status == 'ready' %}ready{% else %}empty{% endif %}">
                     {% if stats and stats.status == 'ready' %}
                         {{ stats.total_chunks }} chunks indexés
@@ -1427,6 +1459,71 @@
         let selectedItems = new Map();
         let indexedDocuments = [];
         let currentMode = 'qa';
+        let ttsEnabled = true;  // Text-to-speech activé par défaut
+
+        // ========== TEXT-TO-SPEECH FUNCTIONS ==========
+
+        async function speakText(text) {
+            if (!ttsEnabled || !text) return;
+
+            try {
+                // Nettoyer le texte (enlever les emojis, commandes, markdown)
+                let cleanText = text
+                    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')  // Emojis
+                    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')  // Symboles
+                    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')  // Transport
+                    .replace(/[\u{2600}-\u{26FF}]/gu, '')    // Misc
+                    .replace(/[\u{2700}-\u{27BF}]/gu, '')    // Dingbats
+                    .replace(/\*\*/g, '')  // Markdown bold
+                    .replace(/\*/g, '')    // Markdown italic
+                    .replace(/`/g, '')     // Code
+                    .replace(/#{1,6}\s/g, '')  // Headers
+                    .trim();
+
+                if (!cleanText) return;
+
+                // Limiter la longueur pour TTS
+                if (cleanText.length > 1000) {
+                    cleanText = cleanText.substring(0, 1000) + "...";
+                }
+
+                const response = await fetch('/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: cleanText })
+                });
+
+                if (!response.ok) {
+                    console.error('TTS error:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.audio) {
+                    playAudio(data.audio);
+                }
+            } catch (error) {
+                console.error('TTS error:', error);
+            }
+        }
+
+        function playAudio(base64Audio) {
+            try {
+                const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
+                audio.play().catch(e => console.error('Audio play error:', e));
+            } catch (error) {
+                console.error('Audio error:', error);
+            }
+        }
+
+        function toggleTTS() {
+            ttsEnabled = !ttsEnabled;
+            const btn = document.getElementById('tts-toggle');
+            if (btn) {
+                btn.classList.toggle('active', ttsEnabled);
+                btn.title = ttsEnabled ? 'Désactiver la voix' : 'Activer la voix';
+            }
+        }
 
         // ========== MODE SWITCHING ==========
 
@@ -1482,6 +1579,10 @@
                     body: JSON.stringify({ message, history: conversationHistory })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`Erreur serveur: ${response.status}`);
+                }
+
                 const data = await response.json();
                 removeTyping(typingId);
 
@@ -1494,10 +1595,14 @@
                     addMessage(answerHtml, 'assistant', true);
                     conversationHistory.push({ role: 'user', content: message });
                     conversationHistory.push({ role: 'assistant', content: data.answer });
+
+                    // Text-to-speech pour la réponse
+                    speakText(data.answer);
                 }
             } catch (error) {
                 removeTyping(typingId);
-                addMessage('Erreur de connexion.', 'error');
+                console.error('Chat error:', error);
+                addMessage('Erreur: ' + (error.message || 'Connexion échouée'), 'error');
             }
         }
 
@@ -1640,6 +1745,10 @@
                     body: formData
                 });
 
+                if (!transcribeResponse.ok) {
+                    throw new Error(`Erreur serveur transcription: ${transcribeResponse.status}`);
+                }
+
                 const transcribeData = await transcribeResponse.json();
 
                 // Remove transcription status
@@ -1667,6 +1776,10 @@
                     })
                 });
 
+                if (!chatResponse.ok) {
+                    throw new Error(`Erreur serveur chat: ${chatResponse.status}`);
+                }
+
                 const chatData = await chatResponse.json();
                 removeTyping(typingId);
 
@@ -1682,8 +1795,18 @@
                 conversationHistory.push({ role: 'user', content: userMessage });
                 conversationHistory.push({ role: 'assistant', content: chatData.answer });
 
+                // Text-to-speech pour la réponse
+                speakText(chatData.answer);
+
             } catch (error) {
-                addMessage('Erreur de connexion.', 'error');
+                console.error('Voice processing error:', error);
+                // Clean up any status indicators
+                const statusEl = document.getElementById(transcribingId);
+                if (statusEl) statusEl.remove();
+                // Try to remove typing indicator if it exists
+                const typingEl = document.querySelector('.typing-indicator');
+                if (typingEl) typingEl.parentElement.remove();
+                addMessage('Erreur: ' + (error.message || 'Connexion échouée'), 'error');
             }
         }
 
@@ -2061,6 +2184,9 @@
                     editorHistory.push({ role: 'user', content: message });
                     editorHistory.push({ role: 'assistant', content: responseText });
 
+                    // Text-to-speech pour la réponse
+                    speakText(responseText);
+
                     // If a document was created, select it automatically
                     if (data.created_document) {
                         selectDocForEdit(
@@ -2120,11 +2246,7 @@
         }
 
         async function startEditorRecording() {
-            if (!selectedDocument) {
-                alert('Veuillez d\'abord sélectionner un document.');
-                return;
-            }
-
+            // Permet l'enregistrement sans document sélectionné (mode création)
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 editorMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -2192,6 +2314,10 @@
                     body: formData
                 });
 
+                if (!transcribeResponse.ok) {
+                    throw new Error(`Erreur serveur transcription: ${transcribeResponse.status}`);
+                }
+
                 const transcribeData = await transcribeResponse.json();
 
                 // Remove transcription status
@@ -2220,6 +2346,10 @@
                     })
                 });
 
+                if (!chatResponse.ok) {
+                    throw new Error(`Erreur serveur chat-edit: ${chatResponse.status}`);
+                }
+
                 const chatData = await chatResponse.json();
                 removeEditorTyping(typingId);
 
@@ -2234,6 +2364,9 @@
                 editorHistory.push({ role: 'user', content: userMessage });
                 editorHistory.push({ role: 'assistant', content: responseText });
 
+                // Text-to-speech pour la réponse
+                speakText(responseText);
+
                 // If a document was created, select it
                 if (chatData.created_document) {
                     selectDocForEdit(
@@ -2244,7 +2377,14 @@
                 }
 
             } catch (error) {
-                addEditorMessage('Erreur de connexion.', 'error');
+                console.error('Editor voice processing error:', error);
+                // Clean up any status indicators
+                const statusEl = document.getElementById(transcribingId);
+                if (statusEl) statusEl.remove();
+                // Try to remove typing indicator if it exists
+                const typingEl = document.querySelector('#editor-messages .typing-indicator');
+                if (typingEl) typingEl.parentElement.remove();
+                addEditorMessage('Erreur: ' + (error.message || 'Connexion échouée'), 'error');
             }
         }
     </script>

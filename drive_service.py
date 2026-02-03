@@ -1233,6 +1233,97 @@ class DriveService:
             print(f"[update_google_slides] Error: {e}\n{traceback.format_exc()}", flush=True)
             return {'status': 'error', 'message': str(e), 'file_id': file_id}
 
+    def move_file(self, file_id: str, destination_folder_id: str, source_folder_id: str = None) -> Dict:
+        """
+        Move a file to a different folder in Google Drive
+
+        Args:
+            file_id: The ID of the file to move
+            destination_folder_id: The ID of the destination folder
+            source_folder_id: Optional ID of the current parent folder
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Get current parents if not provided
+            if not source_folder_id:
+                file_meta = self.service.files().get(
+                    fileId=file_id,
+                    fields='parents'
+                ).execute()
+                current_parents = file_meta.get('parents', [])
+                source_folder_id = ','.join(current_parents) if current_parents else None
+
+            # Move the file
+            file = self.service.files().update(
+                fileId=file_id,
+                addParents=destination_folder_id,
+                removeParents=source_folder_id,
+                fields='id, name, parents'
+            ).execute()
+
+            print(f"[move_file] Moved file {file_id} to folder {destination_folder_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'File moved successfully',
+                'file_id': file_id,
+                'new_parent': destination_folder_id
+            }
+
+        except HttpError as error:
+            print(f"[move_file] HttpError: {error}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(error),
+                'file_id': file_id
+            }
+        except Exception as e:
+            import traceback
+            print(f"[move_file] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {
+                'status': 'error',
+                'message': str(e),
+                'file_id': file_id
+            }
+
+    def list_folders_flat(self) -> List[Dict]:
+        """
+        List all folders with their paths for easy selection
+
+        Returns:
+            List of folder dictionaries with id, name, and path
+        """
+        try:
+            all_folders = []
+            page_token = None
+
+            while True:
+                results = self.service.files().list(
+                    pageSize=100,
+                    fields="nextPageToken, files(id, name, parents)",
+                    q="mimeType='application/vnd.google-apps.folder' and trashed=false",
+                    pageToken=page_token
+                ).execute()
+
+                folders = results.get('files', [])
+                for folder in folders:
+                    all_folders.append({
+                        'id': folder['id'],
+                        'name': folder['name'],
+                        'parents': folder.get('parents', [])
+                    })
+
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+
+            return all_folders
+
+        except Exception as e:
+            print(f"[list_folders_flat] Error: {e}", flush=True)
+            return []
+
     def add_slide_with_text(self, file_id: str, title: str, body_text: str) -> Dict:
         """
         Add a new slide with title and body text
