@@ -1324,6 +1324,404 @@ class DriveService:
             print(f"[list_folders_flat] Error: {e}", flush=True)
             return []
 
+    # ============== Charts and Tables Methods ==============
+
+    def create_chart_in_sheet(self, file_id: str, chart_type: str, data_range: str,
+                               title: str = "", position: dict = None) -> Dict:
+        """
+        Create a chart in a Google Sheet
+
+        Args:
+            file_id: The ID of the Google Sheet
+            chart_type: Type of chart (BAR, LINE, PIE, COLUMN, AREA, SCATTER)
+            data_range: Range of data for the chart (e.g., "A1:D10")
+            title: Optional chart title
+            position: Optional position {sheetId, rowIndex, columnIndex}
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Map chart types to Google Sheets API types
+            chart_type_map = {
+                'BAR': 'BAR',
+                'LINE': 'LINE',
+                'PIE': 'PIE',
+                'COLUMN': 'COLUMN',
+                'AREA': 'AREA',
+                'SCATTER': 'SCATTER',
+                'COMBO': 'COMBO',
+                'STEPPED_AREA': 'STEPPED_AREA'
+            }
+
+            api_chart_type = chart_type_map.get(chart_type.upper(), 'COLUMN')
+
+            # Get sheet ID (default to first sheet)
+            spreadsheet = self.sheets_service.spreadsheets().get(
+                spreadsheetId=file_id
+            ).execute()
+            sheet_id = spreadsheet['sheets'][0]['properties']['sheetId']
+
+            # Parse the data range to get source range
+            # Convert "A1:D10" to proper range object
+            import re
+            range_match = re.match(r'([A-Z]+)(\d+):([A-Z]+)(\d+)', data_range.upper())
+            if not range_match:
+                return {'status': 'error', 'message': f'Invalid data range format: {data_range}'}
+
+            start_col = self._col_letter_to_index(range_match.group(1))
+            start_row = int(range_match.group(2)) - 1
+            end_col = self._col_letter_to_index(range_match.group(3))
+            end_row = int(range_match.group(4))
+
+            # Build chart spec based on type
+            if api_chart_type == 'PIE':
+                chart_spec = {
+                    'pieChart': {
+                        'legendPosition': 'RIGHT_LEGEND',
+                        'domain': {
+                            'sourceRange': {
+                                'sources': [{
+                                    'sheetId': sheet_id,
+                                    'startRowIndex': start_row,
+                                    'endRowIndex': end_row,
+                                    'startColumnIndex': start_col,
+                                    'endColumnIndex': start_col + 1
+                                }]
+                            }
+                        },
+                        'series': {
+                            'sourceRange': {
+                                'sources': [{
+                                    'sheetId': sheet_id,
+                                    'startRowIndex': start_row,
+                                    'endRowIndex': end_row,
+                                    'startColumnIndex': start_col + 1,
+                                    'endColumnIndex': end_col + 1
+                                }]
+                            }
+                        }
+                    }
+                }
+            else:
+                # Bar, Line, Column, Area, Scatter charts
+                chart_spec = {
+                    'basicChart': {
+                        'chartType': api_chart_type,
+                        'legendPosition': 'BOTTOM_LEGEND',
+                        'axis': [
+                            {'position': 'BOTTOM_AXIS', 'title': ''},
+                            {'position': 'LEFT_AXIS', 'title': ''}
+                        ],
+                        'domains': [{
+                            'domain': {
+                                'sourceRange': {
+                                    'sources': [{
+                                        'sheetId': sheet_id,
+                                        'startRowIndex': start_row,
+                                        'endRowIndex': end_row,
+                                        'startColumnIndex': start_col,
+                                        'endColumnIndex': start_col + 1
+                                    }]
+                                }
+                            }
+                        }],
+                        'series': [{
+                            'series': {
+                                'sourceRange': {
+                                    'sources': [{
+                                        'sheetId': sheet_id,
+                                        'startRowIndex': start_row,
+                                        'endRowIndex': end_row,
+                                        'startColumnIndex': col_idx,
+                                        'endColumnIndex': col_idx + 1
+                                    }]
+                                }
+                            },
+                            'targetAxis': 'LEFT_AXIS'
+                        } for col_idx in range(start_col + 1, end_col + 1)],
+                        'headerCount': 1
+                    }
+                }
+
+            # Position for the chart
+            if position:
+                overlay_position = {
+                    'anchorCell': {
+                        'sheetId': position.get('sheetId', sheet_id),
+                        'rowIndex': position.get('rowIndex', end_row + 2),
+                        'columnIndex': position.get('columnIndex', 0)
+                    }
+                }
+            else:
+                overlay_position = {
+                    'anchorCell': {
+                        'sheetId': sheet_id,
+                        'rowIndex': end_row + 2,
+                        'columnIndex': 0
+                    }
+                }
+
+            # Create the chart request
+            request = {
+                'addChart': {
+                    'chart': {
+                        'spec': {
+                            'title': title,
+                            **chart_spec
+                        },
+                        'position': {
+                            'overlayPosition': overlay_position
+                        }
+                    }
+                }
+            }
+
+            result = self.sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=file_id,
+                body={'requests': [request]}
+            ).execute()
+
+            chart_id = result.get('replies', [{}])[0].get('addChart', {}).get('chart', {}).get('chartId')
+
+            print(f"[create_chart_in_sheet] Created {api_chart_type} chart in {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Graphique {api_chart_type} créé avec succès',
+                'chart_id': chart_id,
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[create_chart_in_sheet] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}
+
+    def _col_letter_to_index(self, col_letter: str) -> int:
+        """Convert column letter(s) to 0-based index (A=0, B=1, AA=26, etc.)"""
+        result = 0
+        for char in col_letter.upper():
+            result = result * 26 + (ord(char) - ord('A') + 1)
+        return result - 1
+
+    def insert_table_in_doc(self, file_id: str, rows: int, cols: int,
+                            data: list = None, insert_index: int = None) -> Dict:
+        """
+        Insert a table in a Google Doc
+
+        Args:
+            file_id: The ID of the Google Doc
+            rows: Number of rows
+            cols: Number of columns
+            data: Optional 2D list of data to fill the table
+            insert_index: Optional index where to insert (default: end)
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Get document to find end index if not provided
+            if insert_index is None:
+                doc = self.docs_service.documents().get(documentId=file_id).execute()
+                content = doc.get('body', {}).get('content', [])
+                insert_index = 1
+                for element in content:
+                    if 'endIndex' in element:
+                        insert_index = max(insert_index, element['endIndex'] - 1)
+
+            # Create table request
+            requests = [{
+                'insertTable': {
+                    'rows': rows,
+                    'columns': cols,
+                    'location': {
+                        'index': insert_index
+                    }
+                }
+            }]
+
+            # Execute table creation
+            result = self.docs_service.documents().batchUpdate(
+                documentId=file_id,
+                body={'requests': requests}
+            ).execute()
+
+            # If data provided, fill the table
+            if data:
+                # Need to get the document again to find table cell indices
+                doc = self.docs_service.documents().get(documentId=file_id).execute()
+
+                # Find the table we just created
+                table_start_index = None
+                for element in doc.get('body', {}).get('content', []):
+                    if 'table' in element:
+                        if element.get('startIndex', 0) >= insert_index:
+                            table_start_index = element.get('startIndex')
+                            table_element = element['table']
+                            break
+
+                if table_start_index and table_element:
+                    fill_requests = []
+                    table_rows = table_element.get('tableRows', [])
+
+                    for row_idx, row_data in enumerate(data[:rows]):
+                        if row_idx < len(table_rows):
+                            cells = table_rows[row_idx].get('tableCells', [])
+                            for col_idx, cell_value in enumerate(row_data[:cols]):
+                                if col_idx < len(cells):
+                                    cell = cells[col_idx]
+                                    cell_content = cell.get('content', [])
+                                    if cell_content:
+                                        # Find the paragraph start index
+                                        para = cell_content[0]
+                                        if 'paragraph' in para:
+                                            para_start = para.get('startIndex', 0)
+                                            fill_requests.append({
+                                                'insertText': {
+                                                    'location': {'index': para_start},
+                                                    'text': str(cell_value)
+                                                }
+                                            })
+
+                    if fill_requests:
+                        # Reverse to maintain correct indices
+                        fill_requests.reverse()
+                        self.docs_service.documents().batchUpdate(
+                            documentId=file_id,
+                            body={'requests': fill_requests}
+                        ).execute()
+
+            print(f"[insert_table_in_doc] Created {rows}x{cols} table in {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Tableau {rows}x{cols} créé avec succès',
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[insert_table_in_doc] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}
+
+    def format_sheet_range(self, file_id: str, range_str: str,
+                           bold: bool = False, background_color: dict = None,
+                           borders: bool = False) -> Dict:
+        """
+        Format a range of cells in a Google Sheet (bold headers, colors, borders)
+
+        Args:
+            file_id: The ID of the Google Sheet
+            range_str: Range to format (e.g., "A1:D1")
+            bold: Make text bold
+            background_color: RGB dict {red, green, blue} (0-1 values)
+            borders: Add borders around cells
+
+        Returns:
+            Result dictionary with status
+        """
+        try:
+            # Get sheet ID
+            spreadsheet = self.sheets_service.spreadsheets().get(
+                spreadsheetId=file_id
+            ).execute()
+            sheet_id = spreadsheet['sheets'][0]['properties']['sheetId']
+
+            # Parse range
+            import re
+            range_match = re.match(r'([A-Z]+)(\d+):([A-Z]+)(\d+)', range_str.upper())
+            if not range_match:
+                return {'status': 'error', 'message': f'Invalid range format: {range_str}'}
+
+            start_col = self._col_letter_to_index(range_match.group(1))
+            start_row = int(range_match.group(2)) - 1
+            end_col = self._col_letter_to_index(range_match.group(3)) + 1
+            end_row = int(range_match.group(4))
+
+            requests = []
+
+            # Bold formatting
+            if bold:
+                requests.append({
+                    'repeatCell': {
+                        'range': {
+                            'sheetId': sheet_id,
+                            'startRowIndex': start_row,
+                            'endRowIndex': end_row,
+                            'startColumnIndex': start_col,
+                            'endColumnIndex': end_col
+                        },
+                        'cell': {
+                            'userEnteredFormat': {
+                                'textFormat': {'bold': True}
+                            }
+                        },
+                        'fields': 'userEnteredFormat.textFormat.bold'
+                    }
+                })
+
+            # Background color
+            if background_color:
+                requests.append({
+                    'repeatCell': {
+                        'range': {
+                            'sheetId': sheet_id,
+                            'startRowIndex': start_row,
+                            'endRowIndex': end_row,
+                            'startColumnIndex': start_col,
+                            'endColumnIndex': end_col
+                        },
+                        'cell': {
+                            'userEnteredFormat': {
+                                'backgroundColor': background_color
+                            }
+                        },
+                        'fields': 'userEnteredFormat.backgroundColor'
+                    }
+                })
+
+            # Borders
+            if borders:
+                border_style = {
+                    'style': 'SOLID',
+                    'width': 1,
+                    'color': {'red': 0, 'green': 0, 'blue': 0}
+                }
+                requests.append({
+                    'updateBorders': {
+                        'range': {
+                            'sheetId': sheet_id,
+                            'startRowIndex': start_row,
+                            'endRowIndex': end_row,
+                            'startColumnIndex': start_col,
+                            'endColumnIndex': end_col
+                        },
+                        'top': border_style,
+                        'bottom': border_style,
+                        'left': border_style,
+                        'right': border_style,
+                        'innerHorizontal': border_style,
+                        'innerVertical': border_style
+                    }
+                })
+
+            if requests:
+                self.sheets_service.spreadsheets().batchUpdate(
+                    spreadsheetId=file_id,
+                    body={'requests': requests}
+                ).execute()
+
+            print(f"[format_sheet_range] Formatted {range_str} in {file_id}", flush=True)
+            return {
+                'status': 'success',
+                'message': f'Formatage appliqué sur {range_str}',
+                'file_id': file_id
+            }
+
+        except Exception as e:
+            import traceback
+            print(f"[format_sheet_range] Error: {e}\n{traceback.format_exc()}", flush=True)
+            return {'status': 'error', 'message': str(e), 'file_id': file_id}
+
     def add_slide_with_text(self, file_id: str, title: str, body_text: str) -> Dict:
         """
         Add a new slide with title and body text

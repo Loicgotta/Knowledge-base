@@ -972,6 +972,82 @@ def execute_move_file(answer, drive_service):
         return {'status': 'error', 'message': str(e)}
 
 
+def execute_create_chart(answer, drive_service):
+    """Execute CREATE_CHART command for Google Sheets"""
+    try:
+        import re
+        match = re.search(r'\[CREATE_CHART:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            return {'status': 'error', 'message': 'Invalid CREATE_CHART format'}
+
+        params = json.loads(match.group(1))
+        file_id = params.get('file_id')
+        chart_type = params.get('type', 'COLUMN')
+        data_range = params.get('range')
+        title = params.get('title', '')
+
+        if not file_id or not data_range:
+            return {'status': 'error', 'message': 'Missing file_id or range'}
+
+        return drive_service.create_chart_in_sheet(file_id, chart_type, data_range, title)
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_create_chart] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
+def execute_insert_table(answer, drive_service):
+    """Execute INSERT_TABLE command for Google Docs"""
+    try:
+        import re
+        match = re.search(r'\[INSERT_TABLE:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            return {'status': 'error', 'message': 'Invalid INSERT_TABLE format'}
+
+        params = json.loads(match.group(1))
+        file_id = params.get('file_id')
+        rows = params.get('rows', 3)
+        cols = params.get('cols', 3)
+        data = params.get('data')  # Optional 2D array
+
+        if not file_id:
+            return {'status': 'error', 'message': 'Missing file_id'}
+
+        return drive_service.insert_table_in_doc(file_id, rows, cols, data)
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_insert_table] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
+def execute_format_range(answer, drive_service):
+    """Execute FORMAT_RANGE command for Google Sheets"""
+    try:
+        import re
+        match = re.search(r'\[FORMAT_RANGE:(\{.*?\})\]', answer, re.DOTALL)
+        if not match:
+            return {'status': 'error', 'message': 'Invalid FORMAT_RANGE format'}
+
+        params = json.loads(match.group(1))
+        file_id = params.get('file_id')
+        range_str = params.get('range')
+        bold = params.get('bold', False)
+        background_color = params.get('background_color')
+        borders = params.get('borders', False)
+
+        if not file_id or not range_str:
+            return {'status': 'error', 'message': 'Missing file_id or range'}
+
+        return drive_service.format_sheet_range(file_id, range_str, bold, background_color, borders)
+
+    except Exception as e:
+        import traceback
+        print(f"[execute_format_range] Error: {e}\n{traceback.format_exc()}", flush=True)
+        return {'status': 'error', 'message': str(e)}
+
+
 @app.route('/chat-edit', methods=['POST'])
 def chat_edit():
     """Chat endpoint for editing or creating documents"""
@@ -1133,7 +1209,29 @@ ANALYSE:
 - Ligne 7: mercredi 10
 
 COMMANDE:
-[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Mardi 9 decembre"}}, {{"cell":"B6", "value":"8"}}, {{"cell":"C6", "value":"2"}}, {{"cell":"D6", "value":"1"}}, {{"cell":"A7", "value":"Mercredi 10 decembre"}}, {{"cell":"B7", "value":"10"}}, {{"cell":"C7", "value":"3"}}, {{"cell":"D7", "value":"2"}}]}}]"""
+[MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Mardi 9 decembre"}}, {{"cell":"B6", "value":"8"}}, {{"cell":"C6", "value":"2"}}, {{"cell":"D6", "value":"1"}}, {{"cell":"A7", "value":"Mercredi 10 decembre"}}, {{"cell":"B7", "value":"10"}}, {{"cell":"C7", "value":"3"}}, {{"cell":"D7", "value":"2"}}]}}]
+
+=== GRAPHIQUES ET VISUALISATIONS ===
+
+CREER UN GRAPHIQUE:
+[CREATE_CHART:{{"file_id":"{document['id']}", "type":"COLUMN", "range":"A1:D10", "title":"Mon graphique"}}]
+
+Types disponibles: COLUMN, BAR, LINE, PIE, AREA, SCATTER
+
+Exemples:
+- "Fais un graphique des ventes" → [CREATE_CHART:{{"file_id":"...", "type":"COLUMN", "range":"A1:B10", "title":"Ventes"}}]
+- "Graphique camembert de la repartition" → [CREATE_CHART:{{"file_id":"...", "type":"PIE", "range":"A1:B5", "title":"Repartition"}}]
+- "Courbe d'evolution" → [CREATE_CHART:{{"file_id":"...", "type":"LINE", "range":"A1:C20", "title":"Evolution"}}]
+
+=== FORMATAGE ===
+
+FORMATER UNE PLAGE (gras, couleur, bordures):
+[FORMAT_RANGE:{{"file_id":"{document['id']}", "range":"A1:D1", "bold":true, "borders":true, "background_color":{{"red":0.9, "green":0.9, "blue":0.9}}}}]
+
+Exemples:
+- "Mets les en-tetes en gras" → [FORMAT_RANGE:{{"file_id":"...", "range":"A1:E1", "bold":true}}]
+- "Ajoute des bordures au tableau" → [FORMAT_RANGE:{{"file_id":"...", "range":"A1:E10", "borders":true}}]
+- "Surligne la premiere ligne en bleu" → [FORMAT_RANGE:{{"file_id":"...", "range":"A1:E1", "background_color":{{"red":0.8, "green":0.9, "blue":1}}}}]"""
 
         elif 'presentation' in mime_type:
             doc_type = 'Google Slides'
@@ -1200,6 +1298,16 @@ ETAPE 4: CHOISIR LA BONNE COMMANDE
 5. REMPLACER TOUT le document (ATTENTION - utiliser rarement!):
 [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu complet"}}]
 → Utilise UNIQUEMENT quand: "reecris tout", "remplace tout le document", "nouveau document"
+
+6. INSERER UN TABLEAU:
+[INSERT_TABLE:{{"file_id":"{document['id']}", "rows":4, "cols":3, "data":[["Col1", "Col2", "Col3"], ["val1", "val2", "val3"], ["val4", "val5", "val6"], ["val7", "val8", "val9"]]}}]
+→ Utilise quand: "ajoute un tableau", "insere un tableau", "cree un tableau"
+→ Le parametre "data" est optionnel - si fourni, remplit le tableau avec ces valeurs
+
+Exemples de tableaux:
+- "Ajoute un tableau 3x3" → [INSERT_TABLE:{{"file_id":"...", "rows":3, "cols":3}}]
+- "Tableau avec colonnes Nom, Date, Montant" → [INSERT_TABLE:{{"file_id":"...", "rows":4, "cols":3, "data":[["Nom", "Date", "Montant"]]}}]
+- "Tableau comparatif Option A vs Option B" → [INSERT_TABLE:{{"file_id":"...", "rows":5, "cols":3, "data":[["Critere", "Option A", "Option B"]]}}]
 
 === EXEMPLES D'APPLICATION ===
 
@@ -1380,6 +1488,21 @@ Si tu peux raisonnablement deduire l'intention → AGIS.
         elif '[MOVE_FILE:' in answer:
             modification_result = execute_move_file(answer, drive_service)
             answer = remove_command_from_answer(answer, '[MOVE_FILE:')
+
+        # Handle chart creation
+        elif '[CREATE_CHART:' in answer:
+            modification_result = execute_create_chart(answer, drive_service)
+            answer = remove_command_from_answer(answer, '[CREATE_CHART:')
+
+        # Handle table insertion
+        elif '[INSERT_TABLE:' in answer:
+            modification_result = execute_insert_table(answer, drive_service)
+            answer = remove_command_from_answer(answer, '[INSERT_TABLE:')
+
+        # Handle range formatting
+        elif '[FORMAT_RANGE:' in answer:
+            modification_result = execute_format_range(answer, drive_service)
+            answer = remove_command_from_answer(answer, '[FORMAT_RANGE:')
 
         return jsonify({
             'answer': answer,
@@ -1965,6 +2088,15 @@ Si tu ne comprends pas exactement ce que l'utilisateur veut:
             elif '[MOVE_FILE:' in ai_answer:
                 modification_result = execute_move_file(ai_answer, drive_service)
                 ai_answer = remove_command_from_answer(ai_answer, '[MOVE_FILE:')
+            elif '[CREATE_CHART:' in ai_answer:
+                modification_result = execute_create_chart(ai_answer, drive_service)
+                ai_answer = remove_command_from_answer(ai_answer, '[CREATE_CHART:')
+            elif '[INSERT_TABLE:' in ai_answer:
+                modification_result = execute_insert_table(ai_answer, drive_service)
+                ai_answer = remove_command_from_answer(ai_answer, '[INSERT_TABLE:')
+            elif '[FORMAT_RANGE:' in ai_answer:
+                modification_result = execute_format_range(ai_answer, drive_service)
+                ai_answer = remove_command_from_answer(ai_answer, '[FORMAT_RANGE:')
 
         print(f"[voice-chat] AI response: {ai_answer}", flush=True)
 
