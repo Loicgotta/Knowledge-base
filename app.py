@@ -1211,27 +1211,30 @@ ANALYSE:
 COMMANDE:
 [MODIFY_CELLS:{{"file_id":"...", "updates":[{{"cell":"A6", "value":"Mardi 9 decembre"}}, {{"cell":"B6", "value":"8"}}, {{"cell":"C6", "value":"2"}}, {{"cell":"D6", "value":"1"}}, {{"cell":"A7", "value":"Mercredi 10 decembre"}}, {{"cell":"B7", "value":"10"}}, {{"cell":"C7", "value":"3"}}, {{"cell":"D7", "value":"2"}}]}}]
 
-=== GRAPHIQUES ET VISUALISATIONS ===
+=== GRAPHIQUES (tu decides tout automatiquement) ===
 
-CREER UN GRAPHIQUE:
-[CREATE_CHART:{{"file_id":"{document['id']}", "type":"COLUMN", "range":"A1:D10", "title":"Mon graphique"}}]
+Commande: [CREATE_CHART:{{"file_id":"{document['id']}", "type":"TYPE", "range":"RANGE", "title":"TITRE"}}]
 
-Types disponibles: COLUMN, BAR, LINE, PIE, AREA, SCATTER
+QUAND L'UTILISATEUR DIT "fais un graphique" ou "visualise les donnees":
+1. ANALYSE les donnees de la feuille ci-dessus
+2. DETERMINE automatiquement:
+   - Le RANGE: regarde ou sont les donnees (ex: si donnees en A1:C5, utilise ce range)
+   - Le TYPE: selon le contexte:
+     * Evolution/tendance/temps → LINE
+     * Comparaison de categories → COLUMN ou BAR
+     * Repartition/pourcentages → PIE
+     * Correlation entre 2 variables → SCATTER
+   - Le TITRE: deduis-le du contexte
+3. EXECUTE la commande avec les bons parametres
 
-Exemples:
-- "Fais un graphique des ventes" → [CREATE_CHART:{{"file_id":"...", "type":"COLUMN", "range":"A1:B10", "title":"Ventes"}}]
-- "Graphique camembert de la repartition" → [CREATE_CHART:{{"file_id":"...", "type":"PIE", "range":"A1:B5", "title":"Repartition"}}]
-- "Courbe d'evolution" → [CREATE_CHART:{{"file_id":"...", "type":"LINE", "range":"A1:C20", "title":"Evolution"}}]
+=== FORMATAGE (tu decides automatiquement) ===
 
-=== FORMATAGE ===
+Commande: [FORMAT_RANGE:{{"file_id":"{document['id']}", "range":"RANGE", "bold":true, "borders":true}}]
 
-FORMATER UNE PLAGE (gras, couleur, bordures):
-[FORMAT_RANGE:{{"file_id":"{document['id']}", "range":"A1:D1", "bold":true, "borders":true, "background_color":{{"red":0.9, "green":0.9, "blue":0.9}}}}]
-
-Exemples:
-- "Mets les en-tetes en gras" → [FORMAT_RANGE:{{"file_id":"...", "range":"A1:E1", "bold":true}}]
-- "Ajoute des bordures au tableau" → [FORMAT_RANGE:{{"file_id":"...", "range":"A1:E10", "borders":true}}]
-- "Surligne la premiere ligne en bleu" → [FORMAT_RANGE:{{"file_id":"...", "range":"A1:E1", "background_color":{{"red":0.8, "green":0.9, "blue":1}}}}]"""
+QUAND L'UTILISATEUR DIT "formate" ou "mets en forme":
+- "En-tetes en gras" → tu trouves la ligne 1 et appliques bold
+- "Ajoute des bordures" → tu determines le range des donnees
+- Tu DEDUIS le range en analysant les donnees ci-dessus"""
 
         elif 'presentation' in mime_type:
             doc_type = 'Google Slides'
@@ -1299,15 +1302,15 @@ ETAPE 4: CHOISIR LA BONNE COMMANDE
 [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu complet"}}]
 → Utilise UNIQUEMENT quand: "reecris tout", "remplace tout le document", "nouveau document"
 
-6. INSERER UN TABLEAU:
-[INSERT_TABLE:{{"file_id":"{document['id']}", "rows":4, "cols":3, "data":[["Col1", "Col2", "Col3"], ["val1", "val2", "val3"], ["val4", "val5", "val6"], ["val7", "val8", "val9"]]}}]
-→ Utilise quand: "ajoute un tableau", "insere un tableau", "cree un tableau"
-→ Le parametre "data" est optionnel - si fourni, remplit le tableau avec ces valeurs
+6. INSERER UN TABLEAU (tu decides la structure):
+[INSERT_TABLE:{{"file_id":"{document['id']}", "rows":N, "cols":N, "data":[["en-tetes..."]]}}]
 
-Exemples de tableaux:
-- "Ajoute un tableau 3x3" → [INSERT_TABLE:{{"file_id":"...", "rows":3, "cols":3}}]
-- "Tableau avec colonnes Nom, Date, Montant" → [INSERT_TABLE:{{"file_id":"...", "rows":4, "cols":3, "data":[["Nom", "Date", "Montant"]]}}]
-- "Tableau comparatif Option A vs Option B" → [INSERT_TABLE:{{"file_id":"...", "rows":5, "cols":3, "data":[["Critere", "Option A", "Option B"]]}}]
+QUAND L'UTILISATEUR DIT "ajoute un tableau" ou "fais un tableau":
+- Tu DEDUIS le nombre de lignes et colonnes selon le contexte
+- Tu PROPOSES des en-tetes intelligents si l'utilisateur ne les donne pas
+- "Tableau comparatif" → 2-3 colonnes (Critere, Option A, Option B)
+- "Tableau de suivi" → colonnes adaptees (Date, Tache, Statut, etc.)
+- "Tableau budget" → colonnes financieres (Poste, Prevu, Reel, Ecart)
 
 === EXEMPLES D'APPLICATION ===
 
