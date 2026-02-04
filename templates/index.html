@@ -1507,12 +1507,26 @@
             }
         }
 
+        let currentAudio = null;  // Référence à l'audio en cours
+
         function playAudio(base64Audio) {
             try {
-                const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
-                audio.play().catch(e => console.error('Audio play error:', e));
+                // Arrêter l'audio précédent s'il existe
+                stopCurrentAudio();
+
+                currentAudio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
+                currentAudio.onended = () => { currentAudio = null; };
+                currentAudio.play().catch(e => console.error('Audio play error:', e));
             } catch (error) {
                 console.error('Audio error:', error);
+            }
+        }
+
+        function stopCurrentAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
             }
         }
 
@@ -1676,6 +1690,9 @@
         }
 
         async function startRecording() {
+            // Arrêter le TTS en cours quand le micro est activé
+            stopCurrentAudio();
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -2246,6 +2263,9 @@
         }
 
         async function startEditorRecording() {
+            // Arrêter le TTS en cours quand le micro est activé
+            stopCurrentAudio();
+
             // Permet l'enregistrement sans document sélectionné (mode création)
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

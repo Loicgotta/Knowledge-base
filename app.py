@@ -975,16 +975,17 @@ def execute_move_file(answer, drive_service):
 def execute_create_chart(answer, drive_service):
     """Execute CREATE_CHART command for Google Sheets"""
     try:
-        import re
-        match = re.search(r'\[CREATE_CHART:(\{.*?\})\]', answer, re.DOTALL)
-        if not match:
+        # Utiliser extract_json_from_command pour un meilleur parsing
+        params = extract_json_from_command(answer, '[CREATE_CHART:')
+        if not params:
             return {'status': 'error', 'message': 'Invalid CREATE_CHART format'}
 
-        params = json.loads(match.group(1))
         file_id = params.get('file_id')
         chart_type = params.get('type', 'COLUMN')
         data_range = params.get('range')
         title = params.get('title', '')
+
+        print(f"[execute_create_chart] file_id={file_id}, type={chart_type}, range={data_range}", flush=True)
 
         if not file_id or not data_range:
             return {'status': 'error', 'message': 'Missing file_id or range'}
@@ -1103,11 +1104,28 @@ def chat_edit():
             doc_instructions = f"""
 === METHODOLOGIE D'ANALYSE DU DOCUMENT EXCEL/SHEET ===
 
-***** REGLE FONDAMENTALE *****
+***** REGLE FONDAMENTALE 1 *****
 CHAQUE DONNEE = UNE CELLULE SEPAREE
 JAMAIS plusieurs informations dans une seule cellule!
 Si l'utilisateur dit "ajoute lundi 8 decembre, 12 utilisateurs, agent1 a 3, agent2 a 5"
 Tu dois creer PLUSIEURS cellules: une pour la date, une pour les utilisateurs, une pour chaque agent.
+*****************************
+
+***** REGLE FONDAMENTALE 2 - FORMULES *****
+TOUJOURS PRIVILEGIER LES FORMULES aux valeurs hardcodees!
+- Pour un total → utilise =SUM(A1:A10) au lieu de calculer manuellement
+- Pour une moyenne → utilise =AVERAGE(B1:B10)
+- Pour un comptage → utilise =COUNT() ou =COUNTA()
+- Pour des conditions → utilise =IF(), =SUMIF(), =COUNTIF()
+- Pour des pourcentages → utilise des references comme =B2/B$1*100
+
+EXEMPLES:
+- "calcule le total des ventes" → =SUM(B2:B10) PAS "150"
+- "fais la moyenne" → =AVERAGE(C2:C10) PAS "25.5"
+- "compte les lignes" → =COUNTA(A:A)-1 PAS "10"
+- "pourcentage du total" → =B2/$B$11*100 PAS "15%"
+
+Les formules se mettent a jour AUTOMATIQUEMENT quand les donnees changent!
 *****************************
 
 ETAPE 1: COMPRENDRE LA STRUCTURE
@@ -1977,13 +1995,25 @@ REGLES:
                     sheet_display = "La feuille est vide.\n"
 
                 doc_instructions = f"""
-***** REGLE FONDAMENTALE *****
+***** REGLE FONDAMENTALE 1 *****
 CHAQUE DONNEE = UNE CELLULE SEPAREE. JAMAIS plusieurs informations dans une seule cellule!
+*****************************
+
+***** REGLE FONDAMENTALE 2 - FORMULES *****
+TOUJOURS PRIVILEGIER LES FORMULES aux valeurs hardcodees!
+- Total → =SUM(A1:A10)
+- Moyenne → =AVERAGE(B1:B10)
+- Comptage → =COUNT() ou =COUNTA()
+- Pourcentage → =B2/$B$1*100
+Les formules se mettent a jour automatiquement!
 *****************************
 
 {sheet_display}
 
 COMMANDE: [MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"xxx"}}]}}]
+
+Pour creer un graphique: [CREATE_CHART:{{"file_id":"{document['id']}", "type":"LINE", "range":"A1:C10", "title":"Titre"}}]
+Types: LINE, COLUMN, BAR, PIE, AREA, SCATTER
 """
 
             elif 'presentation' in mime_type:
