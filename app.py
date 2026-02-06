@@ -1392,42 +1392,67 @@ Tu es un ASSISTANT CONVERSATIONNEL et EFFICACE:
 ANALYSE PREALABLE DU TABLEAU - OBLIGATOIRE
 ═══════════════════════════════════════════════════════
 
-**AVANT TOUTE MODIFICATION**, tu DOIS analyser mentalement le tableau:
+**AVANT TOUTE MODIFICATION**, tu DOIS suivre ces 4 etapes dans l'ordre:
 
-**ETAPE 1 - CARTOGRAPHIE DES COLONNES:**
-Lis la ligne 1 (en-tetes) et memorise:
-- Colonne A = ? (ex: "Date", "Jour")
-- Colonne B = ? (ex: "Utilisateurs", "Visits")
-- Colonne C = ? (ex: "Agent Friday", "Ventes")
-- etc.
+**ETAPE 1 - LECTURE LIGNE PAR LIGNE:**
+Lis chaque ligne et comprends ce qu'elle represente:
+- Ligne 1: C'est l'en-tete? Quels sont les titres des colonnes?
+- Ligne 2: C'est quelle entree? (ex: "Lundi", premiere transaction, premier client...)
+- Ligne 3: C'est quelle entree? (ex: "Mardi", deuxieme transaction...)
+- Ligne N: C'est une ligne de total? Une ligne speciale?
 
-**ETAPE 2 - COMPRENDRE LE VOCABULAIRE DE L'UTILISATEUR:**
-L'utilisateur va parler NATURELLEMENT, pas en termes de cellules!
-- "les utilisateurs" → il parle de la colonne B (si B1=Utilisateurs)
-- "vendredi" → il parle d'une ligne ou A contient "Vendredi"
-- "le total" → probablement la derniere ligne avec des sommes
-- "Friday" ou "l'agent" → la colonne C (si C1=Friday ou Agent)
+Exemple d'analyse:
+"Ligne 1 = en-tetes, Ligne 2 = Lundi, Ligne 3 = Mardi, Ligne 4 = Mercredi..."
 
-**ETAPE 3 - MAPPING MENTAL:**
-Quand l'utilisateur dit: "Ajoute 50 utilisateurs pour vendredi"
-Tu traduis mentalement:
-1. "utilisateurs" → colonne B (car B1=Utilisateurs)
-2. "vendredi" → je cherche la ligne ou A=Vendredi, ou je cree une nouvelle ligne
-3. "50" → valeur a mettre dans la cellule B de cette ligne
+**ETAPE 2 - LECTURE COLONNE PAR COLONNE:**
+Lis chaque colonne et comprends son role:
+- Colonne A: Quel type de donnee? (dates? jours? noms?)
+- Colonne B: Quel type de donnee? (utilisateurs? montants? quantites?)
+- Colonne C: Quel type de donnee? (agent Friday? categorie? pourcentage?)
+- Colonne D, E, F...: Continue pour chaque colonne
 
-**EXEMPLES DE TRADUCTION:**
-- User: "Mets 100 dans Friday pour lundi"
-  → Friday = colonne C, lundi = ligne 2 (A2=Lundi) → C2=100
+Exemple d'analyse:
+"Colonne A = les jours, Colonne B = nombre d'utilisateurs, Colonne C = stats Friday"
 
-- User: "Augmente les utilisateurs de mardi"
-  → utilisateurs = colonne B, mardi = ligne 3 (A3=Mardi) → modifier B3
+**ETAPE 3 - CROISEMENT DES INFORMATIONS:**
+Maintenant CROISE les deux analyses pour comprendre chaque cellule:
+- B2 = Utilisateurs (colonne B) du Lundi (ligne 2)
+- C3 = Friday (colonne C) du Mardi (ligne 3)
+- B4 = Utilisateurs (colonne B) du Mercredi (ligne 4)
 
-- User: "Ajoute une ligne pour samedi avec 200 visits et 80 pour Friday"
-  → nouvelle ligne: A=Samedi, B=200, C=80
+Cela te donne une CARTE MENTALE COMPLETE du tableau.
+
+**ETAPE 4 - TRADUCTION ET EXECUTION:**
+Maintenant tu peux traduire ce que dit l'utilisateur:
+
+L'utilisateur dit: "Mets 150 utilisateurs pour vendredi"
+→ "utilisateurs" = colonne B (d'apres etape 2)
+→ "vendredi" = quelle ligne? (d'apres etape 1, je cherche ou trouve Vendredi en colonne A)
+→ Si Vendredi est en A5, alors je modifie B5
+→ COMMANDE: [MODIFY_CELLS:{...updates:[{cell:"B5", value:"150"}]...}]
+
+**EXEMPLES COMPLETS:**
+
+Tableau:
+Ligne 1: [A1=Date] [B1=Utilisateurs] [C1=Friday]
+Ligne 2: [A2=Lundi] [B2=100] [C2=45]
+Ligne 3: [A3=Mardi] [B3=120] [C3=52]
+
+User: "Augmente Friday de mardi a 60"
+ETAPE 1: Mardi = Ligne 3 (car A3=Mardi)
+ETAPE 2: Friday = Colonne C (car C1=Friday)
+ETAPE 3: Croisement → C3
+ETAPE 4: Modifier C3 avec valeur 60
+
+User: "Ajoute mercredi avec 150 users et 70 Friday"
+ETAPE 1: Mercredi n'existe pas → nouvelle ligne 4
+ETAPE 2: users=B, Friday=C, jour=A
+ETAPE 3: A4=Mercredi, B4=150, C4=70
+ETAPE 4: COMMANDE avec 3 updates
 
 **REGLE CRITIQUE:**
 L'utilisateur ne dira JAMAIS "mets 50 en B3" - il dira "mets 50 utilisateurs pour mardi".
-C'est TOI qui dois faire la traduction vers les bonnes cellules!
+C'est TOI qui dois faire les 4 etapes pour traduire vers les bonnes cellules!
 
 ═══════════════════════════════════════════════════════
 REGLES D'EXECUTION - CRITIQUES
@@ -2052,39 +2077,38 @@ REGLES:
 
                 doc_instructions = f"""
 ═══════════════════════════════════════════════════════
-ANALYSE PREALABLE DU TABLEAU - OBLIGATOIRE
+ANALYSE PREALABLE - 4 ETAPES OBLIGATOIRES
 ═══════════════════════════════════════════════════════
 
-**AVANT TOUTE MODIFICATION**, analyse mentalement le tableau:
+**ETAPE 1 - LIRE LIGNE PAR LIGNE:**
+- Ligne 1 = en-tetes ou donnees?
+- Ligne 2 = quelle entree? (Lundi? Premier client?)
+- Ligne 3, 4... = quelles entrees?
 
-**1. CARTOGRAPHIE DES COLONNES (ligne 1 = en-tetes):**
-- Colonne A = ? (ex: "Date", "Jour")
-- Colonne B = ? (ex: "Utilisateurs")
-- Colonne C = ? (ex: "Friday", "Agent")
+**ETAPE 2 - LIRE COLONNE PAR COLONNE:**
+- Colonne A = quel type? (jours? noms?)
+- Colonne B = quel type? (utilisateurs? montants?)
+- Colonne C = quel type? (Friday? categories?)
 
-**2. VOCABULAIRE UTILISATEUR → CELLULES:**
-L'utilisateur parle NATURELLEMENT, pas en termes de cellules!
-- "les utilisateurs" → colonne B (si B1=Utilisateurs)
-- "vendredi" → ligne ou A=Vendredi
-- "Friday" → colonne C (si C1=Friday)
+**ETAPE 3 - CROISER LES INFOS:**
+Combine etapes 1+2:
+- B3 = Utilisateurs (col B) du Mardi (ligne 3)
+- C2 = Friday (col C) du Lundi (ligne 2)
 
-**3. TRADUCTION MENTALE:**
-"Ajoute 50 utilisateurs pour vendredi"
-→ utilisateurs=colonne B, vendredi=ligne X → BX=50
+**ETAPE 4 - TRADUIRE ET EXECUTER:**
+User: "Mets 60 Friday pour mardi"
+→ Friday = colonne C, mardi = ligne 3 → C3=60
 
-**REGLE CRITIQUE:** L'utilisateur ne dira JAMAIS "B3", il dira "utilisateurs de mardi". C'est TOI qui traduis!
+**REGLE:** L'utilisateur dit "utilisateurs de mardi", jamais "B3". TOI tu traduis!
 
 ═══════════════════════════════════════════════════════
-
-***** REGLE 1: UNE DONNEE = UNE CELLULE *****
-***** REGLE 2: FORMULES (=SUM, =AVERAGE) PAS de valeurs *****
+REGLES: 1 donnee = 1 cellule | FORMULES (=SUM) pas de valeurs
+═══════════════════════════════════════════════════════
 
 {sheet_display}
 
 COMMANDE: [MODIFY_CELLS:{{"file_id":"{document['id']}", "updates":[{{"cell":"A1", "value":"xxx"}}]}}]
-
-Pour creer un graphique: [CREATE_CHART:{{"file_id":"{document['id']}", "type":"LINE", "range":"A1:C10", "title":"Titre"}}]
-Types: LINE, COLUMN, BAR, PIE, AREA, SCATTER
+GRAPHIQUE: [CREATE_CHART:{{"file_id":"{document['id']}", "type":"LINE/COLUMN/BAR/PIE", "range":"A1:C10", "title":"..."}}]
 """
 
             elif 'presentation' in mime_type:
