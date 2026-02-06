@@ -26,6 +26,7 @@ from auth import (
 )
 from drive_service import DriveService
 from rag_engine import RAGEngine
+import google.generativeai as genai
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -1537,26 +1538,45 @@ TU ES CONVERSATIONNEL ET EFFICACE.
 TU TRAITES TOUTES LES DEMANDES D'UN MESSAGE.
 CHAQUE ACTION = COMMANDE VISIBLE."""
 
-        # Call OpenAI
-        from openai import OpenAI
-        openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        # Use Gemini for Sheets, OpenAI for other documents
+        if 'spreadsheet' in mime_type:
+            # Gemini 2.0 Flash for Sheets
+            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+            model = genai.GenerativeModel('gemini-2.0-flash')
 
-        messages = [{"role": "system", "content": system_prompt}]
+            # Build conversation for Gemini
+            gemini_history = []
+            for msg in history[-20:]:
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
 
-        # Add history - Mémoire augmentée à 20 messages pour meilleur contexte
-        for msg in history[-20:]:
-            messages.append(msg)
+            chat = model.start_chat(history=gemini_history)
 
-        messages.append({"role": "user", "content": message})
+            # Combine system prompt with user message for Gemini
+            full_prompt = f"{system_prompt}\n\n---\nMessage utilisateur: {message}"
+            response = chat.send_message(full_prompt)
+            answer = response.text
+        else:
+            # OpenAI for Docs and Slides
+            from openai import OpenAI
+            openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2500
-        )
+            messages = [{"role": "system", "content": system_prompt}]
 
-        answer = response.choices[0].message.content
+            # Add history - Mémoire augmentée à 20 messages pour meilleur contexte
+            for msg in history[-20:]:
+                messages.append(msg)
+
+            messages.append({"role": "user", "content": message})
+
+            response = openai_client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2500
+            )
+
+            answer = response.choices[0].message.content
 
         # Check for modification commands
         modification_result = None
@@ -2173,20 +2193,40 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
 ═══════════════════════════════════════════════════════
 """
 
-            messages = [{"role": "system", "content": system_prompt}]
-            # Mémoire augmentée à 20 messages
-            for msg in history[-20:]:
-                messages.append(msg)
-            messages.append({"role": "user", "content": user_message})
+            # Use Gemini for Sheets, OpenAI for other documents
+            if 'spreadsheet' in mime_type:
+                # Gemini 2.0 Flash for Sheets
+                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+                gemini_model = genai.GenerativeModel('gemini-2.0-flash')
 
-            response = client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1500
-            )
+                # Build conversation for Gemini
+                gemini_history = []
+                for msg in history[-20:]:
+                    role = "user" if msg["role"] == "user" else "model"
+                    gemini_history.append({"role": role, "parts": [msg["content"]]})
 
-            ai_answer = response.choices[0].message.content
+                chat = gemini_model.start_chat(history=gemini_history)
+
+                # Combine system prompt with user message for Gemini
+                full_prompt = f"{system_prompt}\n\n---\nMessage utilisateur: {user_message}"
+                gemini_response = chat.send_message(full_prompt)
+                ai_answer = gemini_response.text
+            else:
+                # OpenAI for Docs and Slides
+                messages = [{"role": "system", "content": system_prompt}]
+                # Mémoire augmentée à 20 messages
+                for msg in history[-20:]:
+                    messages.append(msg)
+                messages.append({"role": "user", "content": user_message})
+
+                response = client.chat.completions.create(
+                    model="gpt-4.1-mini",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=1500
+                )
+
+                ai_answer = response.choices[0].message.content
 
             # Exécuter les modifications
             modification_result = None
