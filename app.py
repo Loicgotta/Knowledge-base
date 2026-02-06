@@ -1426,10 +1426,10 @@ Cela te donne une CARTE MENTALE COMPLETE du tableau.
 Maintenant tu peux traduire ce que dit l'utilisateur:
 
 L'utilisateur dit: "Mets 150 utilisateurs pour vendredi"
-→ "utilisateurs" = colonne B (d'apres etape 2)
-→ "vendredi" = quelle ligne? (d'apres etape 1, je cherche ou trouve Vendredi en colonne A)
-→ Si Vendredi est en A5, alors je modifie B5
-→ COMMANDE: [MODIFY_CELLS:{...updates:[{cell:"B5", value:"150"}]...}]
+- "utilisateurs" = colonne B (d'apres etape 2)
+- "vendredi" = quelle ligne? (d'apres etape 1, je cherche ou trouve Vendredi en colonne A)
+- Si Vendredi est en A5, alors je modifie B5
+- COMMANDE: [MODIFY_CELLS:{{...updates:[{{cell:"B5", value:"150"}}]...}}]
 
 **EXEMPLES COMPLETS:**
 
@@ -1441,11 +1441,11 @@ Ligne 3: [A3=Mardi] [B3=120] [C3=52]
 User: "Augmente Friday de mardi a 60"
 ETAPE 1: Mardi = Ligne 3 (car A3=Mardi)
 ETAPE 2: Friday = Colonne C (car C1=Friday)
-ETAPE 3: Croisement → C3
+ETAPE 3: Croisement = C3
 ETAPE 4: Modifier C3 avec valeur 60
 
 User: "Ajoute mercredi avec 150 users et 70 Friday"
-ETAPE 1: Mercredi n'existe pas → nouvelle ligne 4
+ETAPE 1: Mercredi n'existe pas = nouvelle ligne 4
 ETAPE 2: users=B, Friday=C, jour=A
 ETAPE 3: A4=Mercredi, B4=150, C4=70
 ETAPE 4: COMMANDE avec 3 updates
