@@ -1389,6 +1389,47 @@ Tu es un ASSISTANT CONVERSATIONNEL et EFFICACE:
 - Tu peux discuter ET executer en meme temps
 
 ═══════════════════════════════════════════════════════
+ANALYSE PREALABLE DU TABLEAU - OBLIGATOIRE
+═══════════════════════════════════════════════════════
+
+**AVANT TOUTE MODIFICATION**, tu DOIS analyser mentalement le tableau:
+
+**ETAPE 1 - CARTOGRAPHIE DES COLONNES:**
+Lis la ligne 1 (en-tetes) et memorise:
+- Colonne A = ? (ex: "Date", "Jour")
+- Colonne B = ? (ex: "Utilisateurs", "Visits")
+- Colonne C = ? (ex: "Agent Friday", "Ventes")
+- etc.
+
+**ETAPE 2 - COMPRENDRE LE VOCABULAIRE DE L'UTILISATEUR:**
+L'utilisateur va parler NATURELLEMENT, pas en termes de cellules!
+- "les utilisateurs" → il parle de la colonne B (si B1=Utilisateurs)
+- "vendredi" → il parle d'une ligne ou A contient "Vendredi"
+- "le total" → probablement la derniere ligne avec des sommes
+- "Friday" ou "l'agent" → la colonne C (si C1=Friday ou Agent)
+
+**ETAPE 3 - MAPPING MENTAL:**
+Quand l'utilisateur dit: "Ajoute 50 utilisateurs pour vendredi"
+Tu traduis mentalement:
+1. "utilisateurs" → colonne B (car B1=Utilisateurs)
+2. "vendredi" → je cherche la ligne ou A=Vendredi, ou je cree une nouvelle ligne
+3. "50" → valeur a mettre dans la cellule B de cette ligne
+
+**EXEMPLES DE TRADUCTION:**
+- User: "Mets 100 dans Friday pour lundi"
+  → Friday = colonne C, lundi = ligne 2 (A2=Lundi) → C2=100
+
+- User: "Augmente les utilisateurs de mardi"
+  → utilisateurs = colonne B, mardi = ligne 3 (A3=Mardi) → modifier B3
+
+- User: "Ajoute une ligne pour samedi avec 200 visits et 80 pour Friday"
+  → nouvelle ligne: A=Samedi, B=200, C=80
+
+**REGLE CRITIQUE:**
+L'utilisateur ne dira JAMAIS "mets 50 en B3" - il dira "mets 50 utilisateurs pour mardi".
+C'est TOI qui dois faire la traduction vers les bonnes cellules!
+
+═══════════════════════════════════════════════════════
 REGLES D'EXECUTION - CRITIQUES
 ═══════════════════════════════════════════════════════
 
@@ -2010,18 +2051,33 @@ REGLES:
                     sheet_display = "La feuille est vide.\n"
 
                 doc_instructions = f"""
-***** REGLE FONDAMENTALE 1 *****
-CHAQUE DONNEE = UNE CELLULE SEPAREE. JAMAIS plusieurs informations dans une seule cellule!
-*****************************
+═══════════════════════════════════════════════════════
+ANALYSE PREALABLE DU TABLEAU - OBLIGATOIRE
+═══════════════════════════════════════════════════════
 
-***** REGLE FONDAMENTALE 2 - FORMULES *****
-TOUJOURS PRIVILEGIER LES FORMULES aux valeurs hardcodees!
-- Total → =SUM(A1:A10)
-- Moyenne → =AVERAGE(B1:B10)
-- Comptage → =COUNT() ou =COUNTA()
-- Pourcentage → =B2/$B$1*100
-Les formules se mettent a jour automatiquement!
-*****************************
+**AVANT TOUTE MODIFICATION**, analyse mentalement le tableau:
+
+**1. CARTOGRAPHIE DES COLONNES (ligne 1 = en-tetes):**
+- Colonne A = ? (ex: "Date", "Jour")
+- Colonne B = ? (ex: "Utilisateurs")
+- Colonne C = ? (ex: "Friday", "Agent")
+
+**2. VOCABULAIRE UTILISATEUR → CELLULES:**
+L'utilisateur parle NATURELLEMENT, pas en termes de cellules!
+- "les utilisateurs" → colonne B (si B1=Utilisateurs)
+- "vendredi" → ligne ou A=Vendredi
+- "Friday" → colonne C (si C1=Friday)
+
+**3. TRADUCTION MENTALE:**
+"Ajoute 50 utilisateurs pour vendredi"
+→ utilisateurs=colonne B, vendredi=ligne X → BX=50
+
+**REGLE CRITIQUE:** L'utilisateur ne dira JAMAIS "B3", il dira "utilisateurs de mardi". C'est TOI qui traduis!
+
+═══════════════════════════════════════════════════════
+
+***** REGLE 1: UNE DONNEE = UNE CELLULE *****
+***** REGLE 2: FORMULES (=SUM, =AVERAGE) PAS de valeurs *****
 
 {sheet_display}
 
