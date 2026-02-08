@@ -689,15 +689,19 @@ def extract_json_from_command(answer: str, marker: str) -> dict:
 def execute_replace_text(answer: str, credentials) -> dict:
     """Execute text replacement in a Google Doc"""
     try:
+        print(f"[execute_replace_text] Starting... Looking for [REPLACE_TEXT: in answer", flush=True)
         command = extract_json_from_command(answer, '[REPLACE_TEXT:')
         if not command:
+            print(f"[execute_replace_text] No command found in answer", flush=True)
             return None
 
+        print(f"[execute_replace_text] Command parsed: {command}", flush=True)
         file_id = command.get('file_id')
         find_text = command.get('find')
         replace_text = command.get('replace')
 
         if not file_id or not find_text:
+            print(f"[execute_replace_text] Missing params: file_id={file_id}, find_text={find_text}", flush=True)
             return {'status': 'error', 'message': 'Missing file_id or find text'}
 
         print(f"[execute_replace_text] Replacing '{find_text}' with '{replace_text}' in {file_id}", flush=True)
@@ -1264,6 +1268,9 @@ QUAND L'UTILISATEUR DIT "formate" ou "mets en forme":
 
             # Read current document content
             doc_content = drive_service.get_document_content(document['id'])
+            print(f"[chat-edit] Google Doc content retrieved: {len(doc_content) if doc_content else 0} chars", flush=True)
+            print(f"[chat-edit] Google Doc content preview: {doc_content[:200] if doc_content else 'EMPTY'}...", flush=True)
+
             doc_text = doc_content if doc_content else "(Document vide)"
 
             # Truncate if too long for display
@@ -2112,20 +2119,26 @@ GRAPHIQUE: [CREATE_CHART:{{"file_id":"{document['id']}", "type":"LINE/COLUMN/BAR
             else:
                 doc_type = 'Google Doc'
                 doc_content = drive_service.get_document_content(document['id'])
-                if len(doc_content) > 2000:
+                print(f"[voice-chat] Google Doc content retrieved: {len(doc_content) if doc_content else 0} chars", flush=True)
+
+                if not doc_content:
+                    doc_content = "(Document vide)"
+                elif len(doc_content) > 2000:
                     doc_content = doc_content[:2000] + "\n... (tronqué)"
 
                 doc_instructions = f"""
-CONTENU ACTUEL:
+CONTENU ACTUEL DU DOCUMENT:
 ---
 {doc_content}
 ---
 
-COMMANDES:
-- Remplacer: [REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"...", "replace":"..."}}]
-- Insérer après: [INSERT_AFTER:{{"file_id":"{document['id']}", "after":"...", "content":"..."}}]
-- Supprimer: [DELETE_TEXT:{{"file_id":"{document['id']}", "text":"..."}}]
-- Ajouter à la fin: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"..."}}]
+COMMANDES DISPONIBLES:
+- Remplacer un texte: [REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"texte exact a trouver", "replace":"nouveau texte"}}]
+- Insérer après un texte: [INSERT_AFTER:{{"file_id":"{document['id']}", "after":"texte existant", "content":"texte a inserer"}}]
+- Supprimer un texte: [DELETE_TEXT:{{"file_id":"{document['id']}", "text":"texte a supprimer"}}]
+- Ajouter à la fin: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"texte a ajouter"}}]
+
+IMPORTANT: Utilise le TEXTE EXACT du document pour les commandes find/after/text.
 """
 
             system_prompt = f"""Tu es Friday, assistant vocal conversationnel pour "{document['name']}" ({doc_type}).
