@@ -1273,110 +1273,67 @@ QUAND L'UTILISATEUR DIT "formate" ou "mets en forme":
 
             doc_text = doc_content if doc_content else "(Document vide)"
 
-            # Truncate if too long for display
-            if len(doc_text) > 3000:
-                doc_text = doc_text[:3000] + "\n... (contenu tronque)"
-
             doc_instructions = f"""
-=== METHODOLOGIE D'ANALYSE ET MODIFICATION DU DOCUMENT ===
+================================================================================
+                        DOCUMENT A MODIFIER
+================================================================================
 
-***** REGLE FONDAMENTALE *****
-NE REMPLACE PAS TOUT LE DOCUMENT si seule une partie doit etre modifiee!
-Analyse d'abord le contenu existant, puis choisis la commande APPROPRIEE.
-*****************************
-
-ETAPE 1: ANALYSER LE DOCUMENT ACTUEL
-Voici le contenu actuel du document:
---- DEBUT DU CONTENU ---
 {doc_text}
---- FIN DU CONTENU ---
 
-ETAPE 2: IDENTIFIER LA STRUCTURE
-Avant toute modification, analyse:
-1. SECTIONS: Y a-t-il des titres, sous-titres, chapitres?
-2. PARAGRAPHES: Comment le texte est-il organise?
-3. LISTES: Y a-t-il des listes a puces ou numerotees?
-4. ELEMENTS CLES: Quels sont les points importants du document?
+================================================================================
+                        INSTRUCTIONS POUR L'AGENT
+================================================================================
 
-ETAPE 3: COMPRENDRE LA DEMANDE
-Determine precisement ce que l'utilisateur veut:
-- AJOUTER du contenu? → Ou exactement? (fin, apres une section, etc.)
-- MODIFIER du contenu? → Quel texte specifique doit changer?
-- SUPPRIMER du contenu? → Quelle partie exactement?
-- REMPLACER tout? → Seulement si explicitement demande!
+Tu es un agent specialise dans la modification de documents Google Docs.
 
-ETAPE 4: CHOISIR LA BONNE COMMANDE
+**PROCESSUS OBLIGATOIRE EN 3 ETAPES:**
 
-1. AJOUTER a la fin du document:
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"Le texte a ajouter"}}]
-→ Utilise quand: "ajoute une conclusion", "ajoute a la fin", "ecris la suite"
+ETAPE 1 - LECTURE COMPLETE
+Tu viens de lire le document EN ENTIER ci-dessus. Prends le temps de comprendre:
+- La structure globale (titres, sections, paragraphes)
+- Le contenu et le contexte du document
+- Le style d'ecriture utilise
 
-2. REMPLACER un texte specifique par un autre:
-[REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"texte a trouver", "replace":"nouveau texte"}}]
-→ Utilise quand: "change X par Y", "remplace X par Y", "modifie le titre", "corrige"
+ETAPE 2 - ANALYSE DE LA DEMANDE
+Lis attentivement ce que l'utilisateur demande:
+- AJOUTER quelque chose? Ou exactement?
+- MODIFIER quelque chose? Quoi precisement?
+- SUPPRIMER quelque chose? Quelle partie?
 
-3. INSERER apres un texte specifique:
-[INSERT_AFTER:{{"file_id":"{document['id']}", "after":"texte existant", "content":"texte a inserer"}}]
-→ Utilise quand: "ajoute apres le titre", "insere apres la section X", "ajoute sous..."
+ETAPE 3 - EXECUTION PRECISE
+Genere le nouveau contenu du document avec UNIQUEMENT la modification demandee.
 
-4. SUPPRIMER un texte:
-[DELETE_TEXT:{{"file_id":"{document['id']}", "text":"texte a supprimer"}}]
-→ Utilise quand: "supprime", "enleve", "retire", "efface"
+**REGLE ABSOLUE:**
+NE MODIFIE RIEN D'AUTRE que ce que l'utilisateur a explicitement demande!
+- Si on te demande de changer un mot, change SEULEMENT ce mot
+- Si on te demande d'ajouter une section, ajoute SEULEMENT cette section
+- Si on te demande de supprimer un paragraphe, supprime SEULEMENT ce paragraphe
+- TOUT LE RESTE du document doit rester EXACTEMENT identique
 
-5. REMPLACER TOUT le document (ATTENTION - utiliser rarement!):
-[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"Le nouveau contenu complet"}}]
-→ Utilise UNIQUEMENT quand: "reecris tout", "remplace tout le document", "nouveau document"
+**COMMANDE A UTILISER:**
 
-6. INSERER UN TABLEAU (tu decides la structure):
-[INSERT_TABLE:{{"file_id":"{document['id']}", "rows":N, "cols":N, "data":[["en-tetes..."]]}}]
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"[LE DOCUMENT COMPLET AVEC LA MODIFICATION]"}}]
 
-QUAND L'UTILISATEUR DIT "ajoute un tableau" ou "fais un tableau":
-- Tu DEDUIS le nombre de lignes et colonnes selon le contexte
-- Tu PROPOSES des en-tetes intelligents si l'utilisateur ne les donne pas
-- "Tableau comparatif" → 2-3 colonnes (Critere, Option A, Option B)
-- "Tableau de suivi" → colonnes adaptees (Date, Tache, Statut, etc.)
-- "Tableau budget" → colonnes financieres (Poste, Prevu, Reel, Ecart)
+Tu dois toujours retourner le document COMPLET avec la modification integree.
+Copie le document original et applique UNIQUEMENT le changement demande.
 
-=== EXEMPLES D'APPLICATION ===
+**EXEMPLES:**
 
-**EXEMPLE 1: Ajouter une section**
-Document actuel: "Introduction\\n\\nCeci est mon projet."
-Demande: "Ajoute une section conclusion"
-ANALYSE: L'utilisateur veut ajouter a la fin, pas remplacer
-COMMANDE: [MODIFY_DOC:{{"file_id":"...", "action":"append", "content":"\\n\\nConclusion\\n\\nEn conclusion, ce projet..."}}]
+Document: "Titre du projet\\n\\nCeci est l'introduction.\\n\\nVoici le contenu."
+Demande: "Ajoute une conclusion"
+Reponse: J'ajoute une conclusion a la fin du document.
+[MODIFY_DOC:{{"file_id":"xxx", "action":"replace", "content":"Titre du projet\\n\\nCeci est l'introduction.\\n\\nVoici le contenu.\\n\\nConclusion\\n\\nEn resume, ce document presente..."}}]
 
-**EXEMPLE 2: Modifier un titre**
-Document actuel: "Mon Projet\\n\\nDescription du projet..."
+Document: "Mon Projet\\n\\nDescription du projet..."
 Demande: "Change le titre en 'Projet Innovation 2024'"
-ANALYSE: Remplacer seulement le titre, pas tout le document!
-COMMANDE: [REPLACE_TEXT:{{"file_id":"...", "find":"Mon Projet", "replace":"Projet Innovation 2024"}}]
+Reponse: Je modifie le titre comme demande.
+[MODIFY_DOC:{{"file_id":"xxx", "action":"replace", "content":"Projet Innovation 2024\\n\\nDescription du projet..."}}]
 
-**EXEMPLE 3: Ajouter du contenu apres une section**
-Document actuel: "Introduction\\n\\nPremiere partie\\n\\nContenu..."
-Demande: "Ajoute une note apres l'introduction"
-ANALYSE: Inserer apres "Introduction", pas a la fin
-COMMANDE: [INSERT_AFTER:{{"file_id":"...", "after":"Introduction", "content":"\\n\\nNote importante: ..."}}]
-
-**EXEMPLE 4: Corriger une faute**
-Document actuel: "Le projet et tres important"
-Demande: "Corrige 'et' en 'est'"
-ANALYSE: Simple remplacement de mot
-COMMANDE: [REPLACE_TEXT:{{"file_id":"...", "find":"et tres", "replace":"est tres"}}]
-
-**EXEMPLE 5: Supprimer un paragraphe**
-Document actuel: "Intro\\n\\nParagraphe a garder\\n\\nParagraphe inutile\\n\\nConclusion"
-Demande: "Supprime le paragraphe inutile"
-ANALYSE: Supprimer seulement cette partie
-COMMANDE: [DELETE_TEXT:{{"file_id":"...", "text":"\\n\\nParagraphe inutile"}}]
-
-=== CE QU'IL NE FAUT JAMAIS FAIRE ===
-
-INTERDIT: Utiliser "replace" pour modifier juste un titre
-MAUVAIS: [MODIFY_DOC:{{"action":"replace", "content":"Nouveau titre\\n\\n(et recopier tout le reste du doc)"}}]
-BON: [REPLACE_TEXT:{{"find":"Ancien titre", "replace":"Nouveau titre"}}]
-
-INTERDIT: Recopier tout le document pour une petite modification
-INTERDIT: Deviner le contenu du document - utilise ce qui est affiche ci-dessus"""
+Document: "Intro\\n\\nParagraphe 1\\n\\nParagraphe a supprimer\\n\\nConclusion"
+Demande: "Supprime le paragraphe a supprimer"
+Reponse: Je supprime le paragraphe demande.
+[MODIFY_DOC:{{"file_id":"xxx", "action":"replace", "content":"Intro\\n\\nParagraphe 1\\n\\nConclusion"}}]
+"""
 
         # Récupérer la liste des dossiers pour permettre de déplacer des fichiers
         folders = drive_service.list_folders_flat()
@@ -2123,22 +2080,27 @@ GRAPHIQUE: [CREATE_CHART:{{"file_id":"{document['id']}", "type":"LINE/COLUMN/BAR
 
                 if not doc_content:
                     doc_content = "(Document vide)"
-                elif len(doc_content) > 2000:
-                    doc_content = doc_content[:2000] + "\n... (tronqué)"
 
                 doc_instructions = f"""
-CONTENU ACTUEL DU DOCUMENT:
----
+================================================================================
+                        DOCUMENT A MODIFIER
+================================================================================
+
 {doc_content}
----
 
-COMMANDES DISPONIBLES:
-- Remplacer un texte: [REPLACE_TEXT:{{"file_id":"{document['id']}", "find":"texte exact a trouver", "replace":"nouveau texte"}}]
-- Insérer après un texte: [INSERT_AFTER:{{"file_id":"{document['id']}", "after":"texte existant", "content":"texte a inserer"}}]
-- Supprimer un texte: [DELETE_TEXT:{{"file_id":"{document['id']}", "text":"texte a supprimer"}}]
-- Ajouter à la fin: [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"append", "content":"texte a ajouter"}}]
+================================================================================
+                        INSTRUCTIONS
+================================================================================
 
-IMPORTANT: Utilise le TEXTE EXACT du document pour les commandes find/after/text.
+Tu viens de lire le document EN ENTIER. Comprends sa structure et son contenu.
+
+**REGLE ABSOLUE:**
+NE MODIFIE RIEN D'AUTRE que ce que l'utilisateur demande!
+
+**COMMANDE A UTILISER:**
+[MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"[DOCUMENT COMPLET AVEC LA MODIFICATION]"}}]
+
+Retourne toujours le document COMPLET avec UNIQUEMENT la modification demandee.
 """
 
             system_prompt = f"""Tu es Friday, assistant vocal conversationnel pour "{document['name']}" ({doc_type}).
