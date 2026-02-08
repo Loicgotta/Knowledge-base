@@ -1310,6 +1310,13 @@ NE MODIFIE RIEN D'AUTRE que ce que l'utilisateur a explicitement demande!
 - Si on te demande de supprimer un paragraphe, supprime SEULEMENT ce paragraphe
 - TOUT LE RESTE du document doit rester EXACTEMENT identique
 
+**INTERDICTION ABSOLUE - SIMULATION:**
+Tu n'as PAS LE DROIT de dire "j'ai modifie", "c'est fait", "voila" ou toute autre confirmation
+SANS avoir inclus la commande [MODIFY_DOC:...] dans ta reponse!
+- INTERDIT: "J'ai ajoute la conclusion." (sans commande)
+- OBLIGATOIRE: [MODIFY_DOC:{{...}}] PUIS "J'ai ajoute la conclusion."
+Si tu n'inclus pas la commande, la modification N'EST PAS FAITE. Tu mentirais a l'utilisateur.
+
 **COMMANDE A UTILISER:**
 
 [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"[LE DOCUMENT COMPLET AVEC LA MODIFICATION]"}}]
@@ -1452,10 +1459,13 @@ DEMANDES MULTIPLES - CRUCIAL:
 Un seul message peut contenir PLUSIEURS demandes. Tu DOIS TOUTES les traiter.
 JAMAIS: "J'ai fait X, redis-moi pour Y" → INTERDIT
 
-**REGLE #2 - INTERDICTION DE SIMULATION:**
-JAMAIS confirmer sans commande [...] dans ta reponse.
-MOTS INTERDITS sans [...]: "C'est fait", "J'ai ajoute", "Voila", "OK", "Termine"
-AUTO-VERIFICATION: Ma reponse contient [...] ? NON → ajoute la commande.
+**REGLE #2 - INTERDICTION ABSOLUE DE SIMULATION:**
+Tu n'as PAS LE DROIT de dire que tu as modifie quelque chose SANS avoir inclus la commande!
+- INTERDIT: "J'ai ajoute la ligne." (sans commande [...])
+- INTERDIT: "C'est fait", "Voila", "OK", "Termine" (sans commande [...])
+- OBLIGATOIRE: [MODIFY_CELLS:{{...}}] ou [MODIFY_DOC:{{...}}] AVANT de confirmer
+Sans commande = modification NON FAITE = TU MENS A L'UTILISATEUR.
+AUTO-VERIFICATION: Ma reponse contient [...] ? NON = AJOUTE LA COMMANDE MAINTENANT.
 
 **REGLE #3 - FORMAT CONVERSATIONNEL:**
 Tu peux etre naturel TOUT EN executant:
@@ -2096,6 +2106,10 @@ Tu viens de lire le document EN ENTIER. Comprends sa structure et son contenu.
 
 **REGLE ABSOLUE:**
 NE MODIFIE RIEN D'AUTRE que ce que l'utilisateur demande!
+
+**INTERDICTION - SIMULATION:**
+INTERDIT de dire "c'est fait" SANS la commande [MODIFY_DOC:...] dans ta reponse!
+Sans commande = modification NON FAITE = MENSONGE a l'utilisateur.
 
 **COMMANDE A UTILISER:**
 [MODIFY_DOC:{{"file_id":"{document['id']}", "action":"replace", "content":"[DOCUMENT COMPLET AVEC LA MODIFICATION]"}}]
