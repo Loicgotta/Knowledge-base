@@ -1478,7 +1478,7 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         messages.append({"role": "user", "content": message})
 
         response = openai_client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="gpt-4.1",
             messages=messages,
             temperature=0.7,
             max_tokens=2500
@@ -2124,7 +2124,7 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
             messages.append({"role": "user", "content": user_message})
 
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-4.1",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=1500
