@@ -587,48 +587,48 @@ def execute_cells_modification(answer: str, credentials) -> dict:
     import re
 
     try:
-        # Debug: print what we're searching in
-        print(f"[execute_cells_modification] Searching in: {answer[:300]}...", flush=True)
+        # Debug: full answer info
+        print(f"[execute_cells_modification] Answer length: {len(answer)}", flush=True)
+        print(f"[execute_cells_modification] Last 200 chars: ...{answer[-200:] if len(answer) > 200 else answer}", flush=True)
 
-        # Method 1: Try regex to find [MODIFY_CELLS:{...}]
-        pattern = r'\[MODIFY_CELLS:\s*(\{.*?\})\s*\]'
-        match = re.search(pattern, answer, re.DOTALL)
+        # Find the command
+        start_marker = '[MODIFY_CELLS:'
+        start_idx = answer.find(start_marker)
+        if start_idx == -1:
+            print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
+            return None
 
-        if match:
-            command_str = match.group(1)
-            print(f"[execute_cells_modification] Regex extracted: {command_str[:200]}...", flush=True)
-        else:
-            # Method 2: Find by brace counting (fallback)
-            start_marker = '[MODIFY_CELLS:'
-            start_idx = answer.find(start_marker)
-            if start_idx == -1:
-                print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
-                return None
+        # Find the JSON start
+        json_start = answer.find('{', start_idx)
+        if json_start == -1:
+            print(f"[execute_cells_modification] No {{ found after marker", flush=True)
+            return None
 
-            # Skip to first { after marker
-            json_start = answer.find('{', start_idx)
-            if json_start == -1:
-                print(f"[execute_cells_modification] No opening brace found after marker", flush=True)
-                return None
+        # Extract everything from { to end, then parse
+        raw_json = answer[json_start:]
 
-            # Find matching closing brace
-            brace_count = 0
-            json_end = json_start
-            in_string = False
-            escape_next = False
+        # Try to find proper end by counting braces
+        brace_count = 0
+        json_end = -1
+        in_string = False
+        i = 0
 
-            for i, char in enumerate(answer[json_start:], start=json_start):
-                if escape_next:
-                    escape_next = False
-                    continue
-                if char == '\\':
-                    escape_next = True
-                    continue
-                if char == '"' and not escape_next:
-                    in_string = not in_string
-                    continue
-                if in_string:
-                    continue
+        while i < len(raw_json):
+            char = raw_json[i]
+
+            # Handle escape sequences
+            if char == '\\' and in_string and i + 1 < len(raw_json):
+                i += 2  # Skip escaped character
+                continue
+
+            # Handle string boundaries
+            if char == '"':
+                in_string = not in_string
+                i += 1
+                continue
+
+            # Count braces only outside strings
+            if not in_string:
                 if char == '{':
                     brace_count += 1
                 elif char == '}':
@@ -636,9 +636,22 @@ def execute_cells_modification(answer: str, credentials) -> dict:
                     if brace_count == 0:
                         json_end = i + 1
                         break
+            i += 1
 
-            command_str = answer[json_start:json_end]
-            print(f"[execute_cells_modification] Brace-count extracted: {command_str[:200]}...", flush=True)
+        if json_end == -1:
+            print(f"[execute_cells_modification] Incomplete JSON! brace_count={brace_count}, trying to fix...", flush=True)
+            # Gemini response might be truncated, try to fix
+            command_str = raw_json.rstrip()
+            # Remove trailing incomplete parts
+            while command_str and command_str[-1] not in '}]':
+                command_str = command_str[:-1]
+            # Add missing closings
+            if not command_str.endswith(']}'):
+                command_str += ']}'
+            print(f"[execute_cells_modification] Fixed JSON ends with: ...{command_str[-100:]}", flush=True)
+        else:
+            command_str = raw_json[:json_end]
+            print(f"[execute_cells_modification] Complete JSON found, length={len(command_str)}", flush=True)
 
         command = json.loads(command_str)
 
