@@ -1525,14 +1525,38 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         response = client.models.generate_content(
             model='gemini-3-pro-preview',
             contents=contents,
-            config={'temperature': 0.7, 'max_output_tokens': 4096}
+            config={'temperature': 0.7, 'max_output_tokens': 65536}  # Gemini 3 Pro max: 64K tokens
         )
-
-        answer = response.text
 
         # Collect debug logs to show in UI
         debug_logs = []
-        debug_logs.append(f"Gemini response length: {len(answer)} chars")
+
+        # Log response metadata for debugging
+        debug_logs.append(f"=== GEMINI RESPONSE DEBUG ===")
+        debug_logs.append(f"Model: gemini-3-pro-preview")
+        debug_logs.append(f"Max output tokens configured: 65536")
+
+        # Check for response issues
+        try:
+            debug_logs.append(f"Response object type: {type(response)}")
+            debug_logs.append(f"Response candidates count: {len(response.candidates) if hasattr(response, 'candidates') else 'N/A'}")
+
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                debug_logs.append(f"Finish reason: {candidate.finish_reason if hasattr(candidate, 'finish_reason') else 'N/A'}")
+                debug_logs.append(f"Safety ratings: {candidate.safety_ratings if hasattr(candidate, 'safety_ratings') else 'N/A'}")
+
+            if hasattr(response, 'usage_metadata'):
+                usage = response.usage_metadata
+                debug_logs.append(f"Input tokens: {usage.prompt_token_count if hasattr(usage, 'prompt_token_count') else 'N/A'}")
+                debug_logs.append(f"Output tokens: {usage.candidates_token_count if hasattr(usage, 'candidates_token_count') else 'N/A'}")
+                debug_logs.append(f"Total tokens: {usage.total_token_count if hasattr(usage, 'total_token_count') else 'N/A'}")
+        except Exception as meta_err:
+            debug_logs.append(f"Metadata error: {meta_err}")
+
+        answer = response.text
+        debug_logs.append(f"Response text length: {len(answer)} chars")
+        debug_logs.append(f"First 200 chars: {answer[:200]}...")
         debug_logs.append(f"Last 300 chars: ...{answer[-300:] if len(answer) > 300 else answer}")
 
         # Check for modification commands
@@ -2194,10 +2218,11 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
             response = gemini_client.models.generate_content(
                 model='gemini-3-pro-preview',
                 contents=contents,
-                config={'temperature': 0.7, 'max_output_tokens': 2048}
+                config={'temperature': 0.7, 'max_output_tokens': 65536}  # Gemini 3 Pro max: 64K tokens
             )
 
             ai_answer = response.text
+            print(f"[voice-edit] Gemini response length: {len(ai_answer)} chars", flush=True)
 
             # Exécuter les modifications
             modification_result = None
