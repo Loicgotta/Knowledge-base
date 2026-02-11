@@ -1469,7 +1469,7 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         import google.generativeai as genai
         genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
-        gemini_model = genai.GenerativeModel('gemini-2.5-pro-preview-05-06')
+        gemini_model = genai.GenerativeModel('gemini-3-pro-preview')
 
         # Build conversation for Gemini
         gemini_history = []
@@ -2120,7 +2120,7 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
             import google.generativeai as genai
             genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
-            gemini_model = genai.GenerativeModel('gemini-2.5-pro-preview-05-06')
+            gemini_model = genai.GenerativeModel('gemini-3-pro-preview')
 
             # Build conversation for Gemini
             gemini_history = []
