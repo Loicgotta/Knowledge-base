@@ -584,44 +584,61 @@ def remove_command_from_answer(answer: str, marker: str) -> str:
 def execute_cells_modification(answer: str, credentials) -> dict:
     """Execute cell-specific modifications for Google Sheets"""
     import json
+    import re
 
     try:
-        # Find the start of the command
-        start_marker = '[MODIFY_CELLS:'
-        start_idx = answer.find(start_marker)
-        if start_idx == -1:
-            print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
-            return None
+        # Debug: print what we're searching in
+        print(f"[execute_cells_modification] Searching in: {answer[:300]}...", flush=True)
 
-        # Find the JSON by counting braces
-        json_start = start_idx + len(start_marker)
-        brace_count = 0
-        json_end = json_start
-        in_string = False
-        escape_next = False
+        # Method 1: Try regex to find [MODIFY_CELLS:{...}]
+        pattern = r'\[MODIFY_CELLS:\s*(\{.*?\})\s*\]'
+        match = re.search(pattern, answer, re.DOTALL)
 
-        for i, char in enumerate(answer[json_start:], start=json_start):
-            if escape_next:
-                escape_next = False
-                continue
-            if char == '\\':
-                escape_next = True
-                continue
-            if char == '"' and not escape_next:
-                in_string = not in_string
-                continue
-            if in_string:
-                continue
-            if char == '{':
-                brace_count += 1
-            elif char == '}':
-                brace_count -= 1
-                if brace_count == 0:
-                    json_end = i + 1
-                    break
+        if match:
+            command_str = match.group(1)
+            print(f"[execute_cells_modification] Regex extracted: {command_str[:200]}...", flush=True)
+        else:
+            # Method 2: Find by brace counting (fallback)
+            start_marker = '[MODIFY_CELLS:'
+            start_idx = answer.find(start_marker)
+            if start_idx == -1:
+                print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
+                return None
 
-        command_str = answer[json_start:json_end]
-        print(f"[execute_cells_modification] Extracted JSON: {command_str}", flush=True)
+            # Skip to first { after marker
+            json_start = answer.find('{', start_idx)
+            if json_start == -1:
+                print(f"[execute_cells_modification] No opening brace found after marker", flush=True)
+                return None
+
+            # Find matching closing brace
+            brace_count = 0
+            json_end = json_start
+            in_string = False
+            escape_next = False
+
+            for i, char in enumerate(answer[json_start:], start=json_start):
+                if escape_next:
+                    escape_next = False
+                    continue
+                if char == '\\':
+                    escape_next = True
+                    continue
+                if char == '"' and not escape_next:
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        json_end = i + 1
+                        break
+
+            command_str = answer[json_start:json_end]
+            print(f"[execute_cells_modification] Brace-count extracted: {command_str[:200]}...", flush=True)
 
         command = json.loads(command_str)
 
@@ -1491,6 +1508,9 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         )
 
         answer = response.text
+
+        # Debug: print the raw answer from Gemini
+        print(f"[chat-edit] Gemini raw answer: {answer[:500]}...", flush=True)
 
         # Check for modification commands
         modification_result = None
