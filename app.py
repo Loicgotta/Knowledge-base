@@ -1465,26 +1465,25 @@ TU ES CONVERSATIONNEL ET EFFICACE.
 TU TRAITES TOUTES LES DEMANDES D'UN MESSAGE.
 CHAQUE ACTION = COMMANDE VISIBLE."""
 
-        # Call OpenAI
-        from openai import OpenAI
-        openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        # Call Gemini
+        import google.generativeai as genai
+        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
-        messages = [{"role": "system", "content": system_prompt}]
+        gemini_model = genai.GenerativeModel('gemini-2.5-pro-preview-05-06')
 
-        # Add history - Mémoire augmentée à 20 messages pour meilleur contexte
+        # Build conversation for Gemini
+        gemini_history = []
         for msg in history[-20:]:
-            messages.append(msg)
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_history.append({"role": role, "parts": [msg["content"]]})
 
-        messages.append({"role": "user", "content": message})
+        chat = gemini_model.start_chat(history=gemini_history)
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4.1",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2500
-        )
+        # Send message with system prompt prepended
+        full_prompt = f"{system_prompt}\n\n---\n\nUser: {message}"
+        response = chat.send_message(full_prompt)
 
-        answer = response.choices[0].message.content
+        answer = response.text
 
         # Check for modification commands
         modification_result = None
@@ -2117,20 +2116,25 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
 ═══════════════════════════════════════════════════════
 """
 
-            messages = [{"role": "system", "content": system_prompt}]
-            # Mémoire augmentée à 20 messages
+            # Call Gemini for document editing
+            import google.generativeai as genai
+            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+
+            gemini_model = genai.GenerativeModel('gemini-2.5-pro-preview-05-06')
+
+            # Build conversation for Gemini
+            gemini_history = []
             for msg in history[-20:]:
-                messages.append(msg)
-            messages.append({"role": "user", "content": user_message})
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
 
-            response = client.chat.completions.create(
-                model="gpt-4.1",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1500
-            )
+            chat = gemini_model.start_chat(history=gemini_history)
 
-            ai_answer = response.choices[0].message.content
+            # Send message with system prompt prepended
+            full_prompt = f"{system_prompt}\n\n---\n\nUser: {user_message}"
+            response = chat.send_message(full_prompt)
+
+            ai_answer = response.text
 
             # Exécuter les modifications
             modification_result = None
