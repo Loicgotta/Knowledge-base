@@ -581,28 +581,32 @@ def remove_command_from_answer(answer: str, marker: str) -> str:
     return cleaned.strip()
 
 
-def execute_cells_modification(answer: str, credentials) -> dict:
+def execute_cells_modification(answer: str, credentials, return_logs: bool = False):
     """Execute cell-specific modifications for Google Sheets"""
     import json
     import re
 
+    logs = []
+
     try:
         # Debug: full answer info
-        print(f"[execute_cells_modification] Answer length: {len(answer)}", flush=True)
-        print(f"[execute_cells_modification] Last 200 chars: ...{answer[-200:] if len(answer) > 200 else answer}", flush=True)
+        logs.append(f"Answer length: {len(answer)} chars")
+        logs.append(f"Last 300 chars: ...{answer[-300:] if len(answer) > 300 else answer}")
 
         # Find the command
         start_marker = '[MODIFY_CELLS:'
         start_idx = answer.find(start_marker)
         if start_idx == -1:
-            print(f"[execute_cells_modification] No MODIFY_CELLS command found", flush=True)
-            return None
+            logs.append("ERROR: No MODIFY_CELLS command found")
+            return (None, logs) if return_logs else None
 
         # Find the JSON start
         json_start = answer.find('{', start_idx)
         if json_start == -1:
-            print(f"[execute_cells_modification] No {{ found after marker", flush=True)
-            return None
+            logs.append("ERROR: No { found after marker")
+            return (None, logs) if return_logs else None
+
+        logs.append(f"Found {{ at position {json_start}")
 
         # Extract everything from { to end, then parse
         raw_json = answer[json_start:]
@@ -639,7 +643,7 @@ def execute_cells_modification(answer: str, credentials) -> dict:
             i += 1
 
         if json_end == -1:
-            print(f"[execute_cells_modification] Incomplete JSON! brace_count={brace_count}, trying to fix...", flush=True)
+            logs.append(f"WARNING: Incomplete JSON! brace_count={brace_count}, trying to fix...")
             # Gemini response might be truncated, try to fix
             command_str = raw_json.rstrip()
             # Remove trailing incomplete parts
@@ -648,10 +652,10 @@ def execute_cells_modification(answer: str, credentials) -> dict:
             # Add missing closings
             if not command_str.endswith(']}'):
                 command_str += ']}'
-            print(f"[execute_cells_modification] Fixed JSON ends with: ...{command_str[-100:]}", flush=True)
+            logs.append(f"Fixed JSON ends with: ...{command_str[-100:]}")
         else:
             command_str = raw_json[:json_end]
-            print(f"[execute_cells_modification] Complete JSON found, length={len(command_str)}", flush=True)
+            logs.append(f"Complete JSON found, length={len(command_str)}")
 
         command = json.loads(command_str)
 
@@ -659,23 +663,27 @@ def execute_cells_modification(answer: str, credentials) -> dict:
         updates = command.get('updates', [])
 
         if not file_id or not updates:
-            return {'status': 'error', 'message': 'Missing file_id or updates'}
+            logs.append("ERROR: Missing file_id or updates")
+            return ({'status': 'error', 'message': 'Missing file_id or updates'}, logs) if return_logs else {'status': 'error', 'message': 'Missing file_id or updates'}
 
-        print(f"[execute_cells_modification] Updating {len(updates)} cells in {file_id}", flush=True)
+        logs.append(f"SUCCESS: Updating {len(updates)} cells in {file_id}")
 
         drive_service = DriveService(credentials)
         result = drive_service.update_sheet_cells(file_id, updates)
 
-        return result
+        logs.append(f"Result: {result}")
+        return (result, logs) if return_logs else result
 
     except json.JSONDecodeError as e:
-        print(f"[execute_cells_modification] JSON parse error: {e}", flush=True)
-        print(f"[execute_cells_modification] Raw string: {command_str}", flush=True)
-        return {'status': 'error', 'message': f'Format de commande invalide: {e}'}
+        logs.append(f"JSON parse error: {e}")
+        logs.append(f"Raw string (first 500): {command_str[:500] if 'command_str' in dir() else 'N/A'}")
+        result = {'status': 'error', 'message': f'Format de commande invalide: {e}'}
+        return (result, logs) if return_logs else result
     except Exception as e:
         import traceback
-        print(f"[execute_cells_modification] Error: {e}\n{traceback.format_exc()}", flush=True)
-        return {'status': 'error', 'message': str(e)}
+        logs.append(f"Exception: {e}")
+        result = {'status': 'error', 'message': str(e)}
+        return (result, logs) if return_logs else result
 
 
 def extract_json_from_command(answer: str, marker: str) -> dict:
@@ -1522,15 +1530,18 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
 
         answer = response.text
 
-        # Debug: print the raw answer from Gemini
-        print(f"[chat-edit] Gemini raw answer: {answer[:500]}...", flush=True)
+        # Collect debug logs to show in UI
+        debug_logs = []
+        debug_logs.append(f"Gemini response length: {len(answer)} chars")
+        debug_logs.append(f"Last 300 chars: ...{answer[-300:] if len(answer) > 300 else answer}")
 
         # Check for modification commands
         modification_result = None
 
         # Handle cell-specific updates for Sheets
         if '[MODIFY_CELLS:' in answer:
-            modification_result = execute_cells_modification(answer, credentials)
+            modification_result, exec_logs = execute_cells_modification(answer, credentials, return_logs=True)
+            debug_logs.extend(exec_logs)
             answer = remove_command_from_answer(answer, '[MODIFY_CELLS:')
 
         # Handle text replacement in Docs
@@ -1573,9 +1584,13 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
             modification_result = execute_format_range(answer, drive_service)
             answer = remove_command_from_answer(answer, '[FORMAT_RANGE:')
 
+        # Add debug info to answer for UI display
+        debug_info = "\n\n---\n**DEBUG LOGS:**\n" + "\n".join(debug_logs) if debug_logs else ""
+
         return jsonify({
-            'answer': answer,
-            'modification_result': modification_result
+            'answer': answer + debug_info,
+            'modification_result': modification_result,
+            'debug_logs': debug_logs
         })
 
     except Exception as e:
@@ -1583,7 +1598,8 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         print(f"Chat-edit error: {e}\n{error_trace}")
         return jsonify({
             'error': str(e),
-            'error_type': type(e).__name__
+            'error_type': type(e).__name__,
+            'debug': error_trace
         }), 500
 
 
