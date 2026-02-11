@@ -1159,6 +1159,69 @@ modeles financiers, tableaux de bord, inventaires, plannings, rapports, budgets,
 {sheet_display}
 
 ================================================================================
+                    ANALYSE OBLIGATOIRE DU TABLEAU
+================================================================================
+
+**AVANT TOUTE ACTION, TU DOIS COMPRENDRE LE TABLEAU EN PROFONDEUR:**
+
+**A. ANALYSE DES EN-TETES (Ligne 1 et Colonne A)**
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Identifier les TITRES DE COLONNES (generalement ligne 1):               │
+│    - Quelle colonne = quelle donnee? (A=Date, B=Users, C=Revenue...)       │
+│    - Reperer les colonnes de CALCUL vs colonnes de DONNEES                 │
+│                                                                             │
+│ 2. Identifier les TITRES DE LIGNES (generalement colonne A):               │
+│    - Quelles lignes = donnees? (ex: lignes 2-10 = jours/mois)              │
+│    - Quelles lignes = totaux/sous-totaux? (ex: ligne 11 = TOTAL)           │
+│    - Quelles lignes = parametres? (ex: lignes 15-20 = hypotheses)          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+**B. ANALYSE DES FORMULES EXISTANTES**
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. DETECTER les cellules contenant des formules (commencent par =):        │
+│    - =SUM() → cellule de total, NE PAS ecraser avec une valeur!            │
+│    - =AVERAGE() → cellule de moyenne                                       │
+│    - =IF() → logique conditionnelle                                        │
+│    - References ($A$1, B2, etc.) → dependances entre cellules              │
+│                                                                             │
+│ 2. COMPRENDRE les dependances:                                             │
+│    - Si B10=SUM(B2:B9), ajouter une ligne en B10 = ERREUR                  │
+│    - Il faut ajouter en B10 et METTRE A JOUR la formule en B11             │
+│                                                                             │
+│ 3. PRESERVER les formules:                                                 │
+│    - JAMAIS remplacer une formule par une valeur fixe                      │
+│    - Si modification necessaire → adapter la formule, pas la supprimer     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+**C. ANALYSE DES VALEURS ET PATTERNS**
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. IDENTIFIER le type de donnees dans chaque colonne:                      │
+│    - Dates (Lundi, Mardi... ou 01/01/2025, 02/01/2025...)                  │
+│    - Nombres entiers (utilisateurs, quantites)                             │
+│    - Montants (prix, revenus, couts) → attention au format                 │
+│    - Pourcentages (taux, marges)                                           │
+│    - Texte (noms, categories)                                              │
+│                                                                             │
+│ 2. DETECTER les patterns/progressions:                                     │
+│    - Croissance lineaire? (+10 chaque mois)                                │
+│    - Croissance en pourcentage? (*1.2 chaque mois = +20%)                  │
+│    - Formule existante a reproduire?                                       │
+│                                                                             │
+│ 3. RESPECTER la coherence:                                                 │
+│    - Meme format que les cellules existantes                               │
+│    - Meme type de formule si pattern detecte                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+**D. LOCALISATION PRECISE**
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ QUESTIONS A SE POSER:                                                      │
+│ - Ou est la DERNIERE ligne de donnees? → nouvelle ligne = suivante         │
+│ - Ou sont les TOTAUX? → ne pas inserer DANS les totaux                     │
+│ - Ou sont les FORMULES? → les adapter si j'ajoute des lignes               │
+│ - La demande utilisateur correspond a quelle COLONNE exactement?           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
                     1. REGLES FONDAMENTALES
 ================================================================================
 
