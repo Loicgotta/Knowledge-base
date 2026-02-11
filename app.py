@@ -1485,7 +1485,7 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         contents.append({"role": "user", "parts": [{"text": message}]})
 
         response = client.models.generate_content(
-            model='gemini-2.5-pro-preview-05-06',
+            model='gemini-3-pro-preview',
             contents=contents,
             config={'temperature': 0.7, 'max_output_tokens': 4096}
         )
@@ -2143,7 +2143,7 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
             response = gemini_client.models.generate_content(
-                model='gemini-2.5-pro-preview-05-06',
+                model='gemini-3-pro-preview',
                 contents=contents,
                 config={'temperature': 0.7, 'max_output_tokens': 2048}
             )
