@@ -13,8 +13,8 @@ google-api-python-client==2.108.0
 # OpenAI
 openai>=1.3.0
 
-# Google Gemini
-google-generativeai>=0.8.0
+# Google Gemini (new SDK)
+google-genai>=1.0.0
 
 # Vector Store & Embeddings
 chromadb>=0.4.0
