@@ -1503,10 +1503,10 @@ TU ES CONVERSATIONNEL ET EFFICACE.
 TU TRAITES TOUTES LES DEMANDES D'UN MESSAGE.
 CHAQUE ACTION = COMMANDE VISIBLE."""
 
-        # Call Gemini (new SDK)
-        from google import genai
+        # Call Gemini
+        import google.generativeai as genai
 
-        client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
         # Build conversation history for Gemini
         contents = []
@@ -1522,11 +1522,11 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         # Add current message
         contents.append({"role": "user", "parts": [{"text": message}]})
 
-        response = client.models.generate_content(
-            model='gemini-3-pro-preview',
-            contents=contents,
-            config={'temperature': 0.7, 'max_output_tokens': 4096}
+        model = genai.GenerativeModel(
+            'gemini-2.0-flash',
+            generation_config={'temperature': 0.7, 'max_output_tokens': 4096}
         )
+        response = model.generate_content(contents)
 
         answer = response.text
 
@@ -2172,10 +2172,10 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
 ═══════════════════════════════════════════════════════
 """
 
-            # Call Gemini for document editing (new SDK)
-            from google import genai
+            # Call Gemini for document editing
+            import google.generativeai as genai
 
-            gemini_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
             # Build conversation history for Gemini
             contents = []
@@ -2191,11 +2191,11 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
             # Add current message
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-            response = gemini_client.models.generate_content(
-                model='gemini-3-pro-preview',
-                contents=contents,
-                config={'temperature': 0.7, 'max_output_tokens': 2048}
+            model = genai.GenerativeModel(
+                'gemini-2.0-flash',
+                generation_config={'temperature': 0.7, 'max_output_tokens': 2048}
             )
+            response = model.generate_content(contents)
 
             ai_answer = response.text
 
