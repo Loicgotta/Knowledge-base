@@ -1465,23 +1465,30 @@ TU ES CONVERSATIONNEL ET EFFICACE.
 TU TRAITES TOUTES LES DEMANDES D'UN MESSAGE.
 CHAQUE ACTION = COMMANDE VISIBLE."""
 
-        # Call Gemini
-        import google.generativeai as genai
-        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+        # Call Gemini (new SDK)
+        from google import genai
 
-        gemini_model = genai.GenerativeModel('gemini-3-pro-preview')
+        client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 
-        # Build conversation for Gemini
-        gemini_history = []
+        # Build conversation history for Gemini
+        contents = []
+        # Add system prompt as first user message
+        contents.append({"role": "user", "parts": [{"text": system_prompt}]})
+        contents.append({"role": "model", "parts": [{"text": "Compris. Je suis pret a t'aider avec ce document."}]})
+
+        # Add conversation history
         for msg in history[-20:]:
             role = "user" if msg["role"] == "user" else "model"
-            gemini_history.append({"role": role, "parts": [msg["content"]]})
+            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
 
-        chat = gemini_model.start_chat(history=gemini_history)
+        # Add current message
+        contents.append({"role": "user", "parts": [{"text": message}]})
 
-        # Send message with system prompt prepended
-        full_prompt = f"{system_prompt}\n\n---\n\nUser: {message}"
-        response = chat.send_message(full_prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-pro-preview-05-06',
+            contents=contents,
+            config={'temperature': 0.7, 'max_output_tokens': 4096}
+        )
 
         answer = response.text
 
@@ -2116,23 +2123,30 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
 ═══════════════════════════════════════════════════════
 """
 
-            # Call Gemini for document editing
-            import google.generativeai as genai
-            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+            # Call Gemini for document editing (new SDK)
+            from google import genai
 
-            gemini_model = genai.GenerativeModel('gemini-3-pro-preview')
+            gemini_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 
-            # Build conversation for Gemini
-            gemini_history = []
+            # Build conversation history for Gemini
+            contents = []
+            # Add system prompt as first user message
+            contents.append({"role": "user", "parts": [{"text": system_prompt}]})
+            contents.append({"role": "model", "parts": [{"text": "Compris."}]})
+
+            # Add conversation history
             for msg in history[-20:]:
                 role = "user" if msg["role"] == "user" else "model"
-                gemini_history.append({"role": role, "parts": [msg["content"]]})
+                contents.append({"role": role, "parts": [{"text": msg["content"]}]})
 
-            chat = gemini_model.start_chat(history=gemini_history)
+            # Add current message
+            contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-            # Send message with system prompt prepended
-            full_prompt = f"{system_prompt}\n\n---\n\nUser: {user_message}"
-            response = chat.send_message(full_prompt)
+            response = gemini_client.models.generate_content(
+                model='gemini-2.5-pro-preview-05-06',
+                contents=contents,
+                config={'temperature': 0.7, 'max_output_tokens': 2048}
+            )
 
             ai_answer = response.text
 
