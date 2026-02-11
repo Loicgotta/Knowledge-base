@@ -1523,7 +1523,7 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
         contents.append({"role": "user", "parts": [{"text": message}]})
 
         response = client.models.generate_content(
-            model='gemini-3-pro-preview',
+            model='gemini-2.5-pro',
             contents=contents,
             config={'temperature': 0.7, 'max_output_tokens': 65536}  # Gemini 3 Pro max: 64K tokens
         )
@@ -1533,7 +1533,7 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
 
         # Log response metadata for debugging
         debug_logs.append(f"=== GEMINI RESPONSE DEBUG ===")
-        debug_logs.append(f"Model: gemini-3-pro-preview")
+        debug_logs.append(f"Model: gemini-2.5-pro")
         debug_logs.append(f"Max output tokens configured: 65536")
 
         # Check for response issues
@@ -2216,7 +2216,7 @@ CONVERSATIONNEL + EFFICACE. TOUTES LES DEMANDES.
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
             response = gemini_client.models.generate_content(
-                model='gemini-3-pro-preview',
+                model='gemini-2.5-pro',
                 contents=contents,
                 config={'temperature': 0.7, 'max_output_tokens': 65536}  # Gemini 3 Pro max: 64K tokens
             )
