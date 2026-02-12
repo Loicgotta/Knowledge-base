@@ -1699,13 +1699,11 @@ CHAQUE ACTION = COMMANDE VISIBLE."""
             modification_result = execute_format_range(answer, drive_service)
             answer = remove_command_from_answer(answer, '[FORMAT_RANGE:')
 
-        # Add debug info to answer for UI display
-        debug_info = "\n\n---\n**DEBUG LOGS:**\n" + "\n".join(debug_logs) if debug_logs else ""
-
+        # Debug logs are kept in response for API debugging but not shown in UI
         return jsonify({
-            'answer': answer + debug_info,
+            'answer': answer,
             'modification_result': modification_result,
-            'debug_logs': debug_logs
+            'debug_logs': debug_logs  # Available via API if needed
         })
 
     except Exception as e:
