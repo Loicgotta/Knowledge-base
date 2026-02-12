@@ -10,8 +10,8 @@ bind = f"0.0.0.0:{os.environ.get('PORT', '10000')}"
 workers = 2
 threads = 4
 
-# Timeout - 120 seconds for Gemini API calls
-timeout = 120
+# Timeout - 300 seconds (5 min) for Gemini API calls
+timeout = 300
 
 # Keep-alive
 keepalive = 5
