@@ -1155,6 +1155,7 @@ class DriveService:
     def update_sheet_cells(self, file_id: str, updates: list) -> Dict:
         """
         Update specific cells in a Google Sheet
+        Auto-expands the grid if cells exceed current dimensions.
 
         Args:
             file_id: The ID of the Google Sheet
@@ -1163,13 +1164,38 @@ class DriveService:
         Returns:
             Result dictionary with status
         """
+        import re
+
+        def column_to_index(col_str: str) -> int:
+            """Convert column letters (A, B, ..., Z, AA, AB, ...) to 0-based index"""
+            result = 0
+            for char in col_str.upper():
+                result = result * 26 + (ord(char) - ord('A') + 1)
+            return result
+
+        def parse_cell_reference(cell: str) -> tuple:
+            """Parse cell reference like 'AA15' into (column_index, row_number)"""
+            match = re.match(r'^([A-Za-z]+)(\d+)$', cell)
+            if match:
+                col_str, row_str = match.groups()
+                return column_to_index(col_str), int(row_str)
+            return 1, 1
+
         try:
-            # Prepare batch update data
+            # Prepare batch update data and find max dimensions needed
             data = []
+            max_col = 0
+            max_row = 0
+
             for update in updates:
                 cell = update.get('cell', '')
                 value = update.get('value', '')
                 if cell:
+                    # Parse cell to find dimensions
+                    col_idx, row_num = parse_cell_reference(cell)
+                    max_col = max(max_col, col_idx)
+                    max_row = max(max_row, row_num)
+
                     data.append({
                         'range': cell,
                         'values': [[value]]
@@ -1178,6 +1204,54 @@ class DriveService:
             if not data:
                 return {'status': 'error', 'message': 'No valid updates provided'}
 
+            # Get current sheet dimensions and expand if needed
+            try:
+                sheet_metadata = self.sheets_service.spreadsheets().get(
+                    spreadsheetId=file_id
+                ).execute()
+
+                sheet_id = sheet_metadata['sheets'][0]['properties']['sheetId']
+                current_cols = sheet_metadata['sheets'][0]['properties']['gridProperties']['columnCount']
+                current_rows = sheet_metadata['sheets'][0]['properties']['gridProperties']['rowCount']
+
+                print(f"[update_sheet_cells] Current grid: {current_cols} cols x {current_rows} rows", flush=True)
+                print(f"[update_sheet_cells] Required: {max_col} cols x {max_row} rows", flush=True)
+
+                # Expand grid if needed
+                requests = []
+                if max_col > current_cols:
+                    cols_to_add = max_col - current_cols + 10  # Add 10 extra columns
+                    requests.append({
+                        'appendDimension': {
+                            'sheetId': sheet_id,
+                            'dimension': 'COLUMNS',
+                            'length': cols_to_add
+                        }
+                    })
+                    print(f"[update_sheet_cells] Expanding: adding {cols_to_add} columns", flush=True)
+
+                if max_row > current_rows:
+                    rows_to_add = max_row - current_rows + 10  # Add 10 extra rows
+                    requests.append({
+                        'appendDimension': {
+                            'sheetId': sheet_id,
+                            'dimension': 'ROWS',
+                            'length': rows_to_add
+                        }
+                    })
+                    print(f"[update_sheet_cells] Expanding: adding {rows_to_add} rows", flush=True)
+
+                if requests:
+                    self.sheets_service.spreadsheets().batchUpdate(
+                        spreadsheetId=file_id,
+                        body={'requests': requests}
+                    ).execute()
+                    print(f"[update_sheet_cells] Grid expanded successfully", flush=True)
+
+            except Exception as expand_err:
+                print(f"[update_sheet_cells] Warning: Could not expand grid: {expand_err}", flush=True)
+
+            # Now perform the actual cell updates
             body = {
                 'valueInputOption': 'USER_ENTERED',
                 'data': data
